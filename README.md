@@ -19,8 +19,9 @@ A key design philosophy of this project is that **AI hallucinations are a featur
 *   **Environment & Dependency Management:** `uv` with a standard `pyproject.toml` configuration. This provides blazingly fast resolution and isolated environments without the heavy system footprint of Conda, perfect for an API/Ollama-driven application.
 
 ### 2. Broadcasting & Compositing
-*   **Option A:** OBS Studio + `obs-websocket` (via `obsws-python`). Visually easy to design, script can update text sources and play media.
-*   **Option B:** Headless FFmpeg pipeline. Harder to design, lower overhead.
+*   **Software:** OBS Studio with the `obs-websocket` feature enabled (built into modern OBS).
+*   **Python Integration:** `obsws-python` library to allow our script to remotely control OBS (update text sources, trigger TTS audio, swap clock images).
+*   **Configuration Management:** OBS "Scene Collections" will be exported as JSON files and tracked in this repository under `obs-assets/` alongside any static stream overlays. Connection credentials (host, port, password) are managed via `.env`.
 *   **Simulcasting:** Restream.io vs local OBS Multistream plugin (Aitum).
 
 ### 3. Vision Models
