@@ -1,0 +1,59 @@
+import asyncio
+import time
+from datetime import datetime
+import obsws_python as obs
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+OBS_HOST = os.getenv("OBS_WEBSOCKET_HOST", "localhost")
+OBS_PORT = os.getenv("OBS_WEBSOCKET_PORT", "4455")
+OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
+
+async def main_loop():
+    print(f"Starting AI Tells Time...")
+    print(f"Attempting to connect to OBS at {OBS_HOST}:{OBS_PORT}...")
+    
+    try:
+        # Connect to the OBS WebSocket
+        # This uses the synchronous client, which is fine for quick network calls
+        client = obs.ReqClient(host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD)
+        print("✅ Connected to OBS successfully!")
+    except Exception as e:
+        print(f"⚠️ Failed to connect to OBS. Is it running? Error: {e}")
+        print("We will run the loop anyway, but OBS text updates will be skipped.")
+        client = None
+
+    print("\nStarting the 60-second broadcast loop...")
+    
+    while True:
+        # 1. Get the current system time
+        now = datetime.now()
+        current_time_str = now.strftime("%H:%M:%S")
+        print(f"\n[Tick at {current_time_str}] -> Pretending to run AI inference...")
+        
+        # 2. Update OBS (if connected)
+        if client:
+            try:
+                # We update the 'text_gpt' source we defined in our SETUP_GUIDE
+                new_text = f"System Time: {current_time_str}"
+                client.set_input_settings("text_gpt", {"text": new_text}, True)
+                print(f"✅ OBS text_gpt updated to: '{new_text}'")
+            except Exception as e:
+                print(f"❌ Error updating OBS text: {e}")
+
+        # 3. Calculate sleep time to align exactly with the top of the next minute
+        current_seconds = time.time() % 60
+        sleep_time = 60 - current_seconds
+        
+        print(f"Sleeping for {sleep_time:.2f} seconds until the next minute (the :00 mark)...")
+        await asyncio.sleep(sleep_time)
+
+if __name__ == "__main__":
+    try:
+        # Run the asynchronous loop
+        asyncio.run(main_loop())
+    except KeyboardInterrupt:
+        print("\nShutting down AI Tells Time loop. Goodbye!")
