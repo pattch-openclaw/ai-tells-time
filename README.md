@@ -1,4 +1,4 @@
-# AI Clock Stream
+# AI Tells Time
 
 ## Concept
 A delightfully absurd live stream acting as an automated Turing test focused entirely on visual temporal hallucinations. 
