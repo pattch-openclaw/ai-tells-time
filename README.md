@@ -15,7 +15,8 @@ A key design philosophy of this project is that **AI hallucinations are a featur
 ## Architecture & Decisions to Make
 
 ### 1. Orchestration
-*   **Proposed:** Python. Excellent asynchronous support (`asyncio`) is crucial for hitting multiple APIs concurrently, and the ecosystem for AI SDKs is top-tier.
+*   **Language:** Python using `asyncio` to manage concurrent API calls and enforce strict timeouts (e.g., fast-failing local models after 20 seconds to keep the 1-minute loop alive).
+*   **Environment & Dependency Management:** `uv` with a standard `pyproject.toml` configuration. This provides blazingly fast resolution and isolated environments without the heavy system footprint of Conda, perfect for an API/Ollama-driven application.
 
 ### 2. Broadcasting & Compositing
 *   **Option A:** OBS Studio + `obs-websocket` (via `obsws-python`). Visually easy to design, script can update text sources and play media.
@@ -24,7 +25,7 @@ A key design philosophy of this project is that **AI hallucinations are a featur
 
 ### 3. Vision Models
 Need to balance cost vs "personality". Since hallucinations are desired, cheaper or smaller models might actually be *better*.
-*   **Local/Free:** `llava`, `qwen2-vl` via Ollama (requires local GPU overhead).
+*   **Local/Free:** `ollama` running lightweight vision models (like `moondream`, `llava:7b`, or `llama3.2-vision:11b`). These will run efficiently on the target M4 Mac Mini utilizing Apple Silicon's unified memory, acting as our chaotic baseline.
 *   **API (Cheap/Free tiers):** `gemini-2.0-flash` (or 1.5), `gpt-4o-mini`, `claude-3-haiku`. 
 
 ### 4. Text-to-Speech (TTS)
