@@ -36,3 +36,34 @@ Need to balance cost vs "personality". Since hallucinations are desired, cheaper
 ### 5. The Clock Source
 *   **Option A:** A physical webcam pointed at a real, cheap analog clock. (High hallucination potential due to glare, angles, and physical oddities).
 *   **Option B:** A programmatically generated image of a clock using Python `Pillow`. (Cleaner, but maybe too easy for the AIs?).
+
+### 6. Deployment
+*   **Target Machine:** Apple Silicon Mac Mini (M4) serving as both the application runtime and GitHub Actions self-hosted runner.
+*   **Deployment Workflow:** Pushing to `main` branch triggers GitHub Actions on the Mac Mini to pull latest changes, sync dependencies with `uv`, and restart the application.
+*   **Configuration:** Environment variables (OBS credentials, API keys) are stored in `~/.config/ai-tells-time/.env` on the Mac Mini, NOT in the repository.
+
+## Mac Mini Setup (Self-Hosted GitHub Actions Runner)
+
+If you need to re-setup the Mac Mini as a GitHub Actions runner:
+
+```bash
+# 1. Download and extract the runner
+cd ~
+mkdir -p actions-runner && cd actions-runner
+curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/latest/download/actions-runner-osx-arm64-$(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep -oP '"tag_name": "\K[^"]+').tar.gz
+tar xzf ./actions-runner.tar.gz
+
+# 2. Configure the runner
+./config.sh --url https://github.com/pattch-openclaw/ai-tells-time --token YOUR_PAT_TOKEN
+# Enter runner name: mac-mini
+# Enter labels (comma-separated): mac-mini, self-hosted
+
+# 3. Install and start as a service
+./svc.sh install sam
+./svc.sh start
+```
+
+**Requirements:**
+- GitHub Personal Access Token with `repo` scope
+- OBS WebSocket enabled on the Mac Mini
+- Python 3.12+ installed
