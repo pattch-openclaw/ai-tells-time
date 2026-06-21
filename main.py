@@ -4,9 +4,15 @@ from datetime import datetime
 import obsws_python as obs
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from ~/.config/ai-tells-time/.env (secure location)
+config_path = Path.home() / ".config" / "ai-tells-time" / ".env"
+if config_path.exists():
+    load_dotenv(config_path)
+else:
+    # Fallback to project directory for development
+    load_dotenv()
 
 OBS_HOST = os.getenv("OBS_WEBSOCKET_HOST", "localhost")
 OBS_PORT = os.getenv("OBS_WEBSOCKET_PORT", "4455")

@@ -1,0 +1,38 @@
+name: Deploy to Mac Mini
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, mac-mini]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv sync
+
+      - name: Ensure secrets directory exists
+        run: mkdir -p ~/.config/ai-tells-time
+
+      - name: Copy .env.example if no .env exists
+        run: |
+          if [ ! -f ~/.config/ai-tells-time/.env ]; then
+            cp .env.example ~/.config/ai-tells-time/.env
+            echo "Created ~/.config/ai-tells-time/.env from .env.example"
+            echo "Please edit it with your OBS WebSocket password and API keys"
+          fi
+
+      - name: Start the application
+        run: |
+          cd /Users/sam/Coding/ai-tells-time
+          nohup uv run main.py >> app.log 2>&1 &
+          echo "Started ai-tells-time in background (see app.log for output)"
