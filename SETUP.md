@@ -21,7 +21,7 @@ mkdir -p ~/.config/ai-tells-time
 cat > ~/.config/ai-tells-time/.env << EOF
 OBS_WEBSOCKET_HOST=localhost
 OBS_WEBSOCKET_PORT=4455
-OBS_WEBSOCKET_PASSWORD=your_password
+OBS_WEBSOCKET_PASSWORD=***
 EOF
 ```
 
@@ -32,7 +32,7 @@ Create `~/.config/ai-tells-time/.env` with:
 ```env
 OBS_WEBSOCKET_HOST=localhost
 OBS_WEBSOCKET_PORT=4455
-OBS_WEBSOCKET_PASSWORD=your_obs_websocket_password
+OBS_WEBSOCKET_PASSWORD=***
 ```
 
 ## OBS Setup
@@ -54,19 +54,6 @@ This will:
 1. Trigger screenshot from `Clock_Camera`
 2. Save to temp directory with timestamp
 3. Return the path to the captured image
-
-### In Python
-
-```python
-from src.capture import capture_clock_image
-import asyncio
-
-async def main():
-    image_path = await capture_clock_image()
-    print(f"Image: {image_path}")
-
-asyncio.run(main())
-```
 
 ## Deployment
 
