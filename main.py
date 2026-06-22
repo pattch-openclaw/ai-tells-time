@@ -18,6 +18,12 @@ OBS_HOST = os.getenv("OBS_WEBSOCKET_HOST", "localhost")
 OBS_PORT = os.getenv("OBS_WEBSOCKET_PORT", "4455")
 OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
 
+# Debug: print loaded values (password hidden)
+print(f"Config loaded from {config_path}:")
+print(f"  HOST: {OBS_HOST}")
+print(f"  PORT: {OBS_PORT}")
+print(f"  PASSWORD: {'***' if OBS_PASSWORD else '(empty)'}")
+
 async def main_loop():
     print(f"Starting AI Tells Time...")
     print(f"Attempting to connect to OBS at {OBS_HOST}:{OBS_PORT}...")
