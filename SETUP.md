@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python 3.12+
+- Python 3.12+ (project pins to 3.12 via `.python-version`)
 - OBS Studio with WebSocket plugin enabled
 - OBS source named `Clock_Camera`
 
@@ -12,6 +12,7 @@
 # Clone the repository
 cd /Users/sam/Coding/ai-tells-time
 
+# uv will automatically use the pinned Python version (3.12)
 # Install dependencies with uv
 uv sync
 

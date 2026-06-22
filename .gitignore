@@ -36,4 +36,8 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Python version file (can be gitignored if you prefer not to track it)
+# .python-version
+
 ```
