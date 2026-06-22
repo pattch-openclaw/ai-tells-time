@@ -1,0 +1,29 @@
+#!/bin/bash
+# Pre-commit hook: Ensure uv.lock is updated when dependencies change
+
+# Get the list of changed files
+changed_files=$(git diff --cached --name-only)
+
+# Check if pyproject.toml or uv.lock is being changed
+pyproject_changed=$(echo "$changed_files" | grep -c "pyproject.toml")
+lock_changed=$(echo "$changed_files" | grep -c "uv.lock")
+
+# If pyproject.toml changed but uv.lock didn't, we need to sync
+if [ "$pyproject_changed" -gt 0 ] && [ "$lock_changed" -eq 0 ]; then
+    echo "Error: pyproject.toml was modified but uv.lock was not updated."
+    echo "Please run 'uv sync' and add uv.lock to your commit."
+    exit 1
+fi
+
+# If uv.lock changed, verify it's valid
+if [ "$lock_changed" -gt 0 ]; then
+    if command -v uv &> /dev/null; then
+        echo "Checking uv.lock validity..."
+        if ! uv sync --check 2>/dev/null; then
+            echo "Error: uv.lock is invalid or out of sync."
+            exit 1
+        fi
+    fi
+fi
+
+exit 0

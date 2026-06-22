@@ -147,7 +147,14 @@ git add pyproject.toml uv.lock
 git commit -m "Update dependencies"
 ```
 
-A pre-commit hook is included that will block commits if `pyproject.toml` is modified without also updating `uv.lock`.
+### Pre-commit Hook Setup
+A pre-commit hook is included in `hooks/pre-commit` to ensure `uv.lock` is always updated when `pyproject.toml` changes.
+
+To install it:
+```bash
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
 
 ### Deployment on Mac Mini
 The GitHub Actions workflow on the Mac Mini automatically:
