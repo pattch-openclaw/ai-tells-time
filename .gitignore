@@ -29,6 +29,9 @@ Thumbs.db
 .env
 .env.local
 
+# Log files
+app.log
+
 # OBS scene collections (optional - can be gitignored if large)
 # obs-assets/
 
