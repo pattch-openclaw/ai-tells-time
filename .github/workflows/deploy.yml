@@ -17,7 +17,7 @@ jobs:
       - name: Update repository from GitHub
         working-directory: /Users/sam/Coding/ai-tells-time
         run: |
-          git pull origin main
+          git pull origin main --rebase
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
