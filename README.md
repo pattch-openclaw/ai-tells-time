@@ -135,23 +135,39 @@ The basic OBS WebSocket connection is fully functional. The script:
 - Set up clock image source (physical webcam or generated image)
 - Configure simulcasting to Twitch/YouTube
 
-If you need to re-setup the Mac Mini as a GitHub Actions runner:
+## Development Practices
+
+### Dependency Management with `uv`
+When changing dependencies in `pyproject.toml`, always run `uv sync` to update `uv.lock` and commit both files together:
 
 ```bash
-# 1. Download and extract the runner
-cd ~
-mkdir -p actions-runner && cd actions-runner
-curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/latest/download/actions-runner-osx-arm64-$(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep -oP '"tag_name": "\K[^"]+').tar.gz
-tar xzf ./actions-runner.tar.gz
+# After editing pyproject.toml
+uv sync
+git add pyproject.toml uv.lock
+git commit -m "Update dependencies"
+```
 
-# 2. Configure the runner
-./config.sh --url https://github.com/pattch-openclaw/ai-tells-time --token YOUR_PAT_TOKEN
-# Enter runner name: mac-mini
-# Enter labels (comma-separated): mac-mini, self-hosted
+A pre-commit hook is included that will block commits if `pyproject.toml` is modified without also updating `uv.lock`.
 
-# 3. Install and start as a service
-./svc.sh install sam
-./svc.sh start
+### Deployment on Mac Mini
+The GitHub Actions workflow on the Mac Mini automatically:
+1. Pulls the latest code from `main`
+2. Runs `uv sync` to install dependencies
+3. Restarts the application
+
+If you need to manually deploy, run:
+```bash
+cd ~/Coding/ai-tells-time
+git pull origin main
+uv sync
+# Restart your application as needed
+```
+
+If `uv.lock` shows merge conflicts, resolve them by using the version from `main`:
+```bash
+git checkout --theirs uv.lock
+git add uv.lock
+git commit -m "Resolve uv.lock merge conflict"
 ```
 
 **Requirements:**
