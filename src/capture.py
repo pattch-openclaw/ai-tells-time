@@ -13,8 +13,17 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
 
 from obsws_python import ReqClient
+
+# Load environment variables from ~/.config/ai-tells-time/.env
+config_path = Path.home() / ".config" / "ai-tells-time" / ".env"
+if config_path.exists():
+    load_dotenv(config_path)
+else:
+    # Fallback to project directory for local testing
+    load_dotenv()
 
 # Configuration
 OBS_SOURCE_NAME = "Clock_Camera"
