@@ -67,3 +67,7 @@ async def main():
 
 asyncio.run(main())
 ```
+
+## Deployment
+
+The project is automatically deployed to the Mac Mini via GitHub Actions when pushing to `main`. The workflow ensures Python 3.12 is used via `uv python pin 3.12`.

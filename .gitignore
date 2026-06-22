@@ -37,7 +37,9 @@ Thumbs.db
 .coverage
 htmlcov/
 
-# Python version file (can be gitignored if you prefer not to track it)
+# Python version file (optional - uncomment to exclude from git)
 # .python-version
+
+
 
 ```
