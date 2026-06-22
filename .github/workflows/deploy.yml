@@ -7,15 +7,11 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
-    defaults:
-      run:
-        working-directory: /Users/sam/Coding/ai-tells-time
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          clean: true
-          fetch-depth: 0
+      - name: Update repository from GitHub
+        working-directory: /Users/sam/Coding/ai-tells-time
+        run: |
+          git pull origin main
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -23,10 +19,12 @@ jobs:
           version: "latest"
 
       - name: Set Python version
+        working-directory: /Users/sam/Coding/ai-tells-time
         run: |
           uv python pin 3.12
 
       - name: Install dependencies (clean sync)
+        working-directory: /Users/sam/Coding/ai-tells-time
         run: |
           rm -rf .venv uv.lock
           uv sync
@@ -35,6 +33,7 @@ jobs:
         run: mkdir -p ~/.config/ai-tells-time
 
       - name: Copy .env.example if no .env exists
+        working-directory: /Users/sam/Coding/ai-tells-time
         run: |
           if [ ! -f ~/.config/ai-tells-time/.env ]; then
             cp .env.example ~/.config/ai-tells-time/.env
@@ -43,6 +42,7 @@ jobs:
           fi
 
       - name: Start the application
+        working-directory: /Users/sam/Coding/ai-tells-time
         run: |
           nohup uv run main.py >> app.log 2>&1 &
           echo "Started ai-tells-time in background (see app.log for output)"
