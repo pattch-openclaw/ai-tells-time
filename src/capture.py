@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from obsws_python import obsws, requests
+from obsws_python import ReqClient
 
 # Configuration
 OBS_SOURCE_NAME = "Clock_Camera"
@@ -29,10 +29,9 @@ OBS_SCREENSHOT_DIR = Path.home() / "Pictures" / "OBS"
 TEMP_DIR = Path(tempfile.gettempdir()) / "ai-tells-time"
 
 
-async def connect_to_obs() -> obsws:
+async def connect_to_obs() -> ReqClient:
     """Establish connection to OBS WebSocket server."""
-    ws = obsws(OBS_HOST, OBS_PORT, OBS_PASSWORD)
-    await ws.connect()
+    ws = ReqClient(host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD)
     return ws
 
 
@@ -42,22 +41,23 @@ async def trigger_screenshot(source_name: str = OBS_SOURCE_NAME) -> Path:
     
     OBS saves screenshots to its default directory. We'll monitor and move the latest one.
     """
-    ws = await connect_to_obs()
+    ws = ReqClient(host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD)
     try:
-        await ws.call(requests.GetSourceScreenshot(
+        ws.call(
+            "GetSourceScreenshot",
             sourceName=source_name,
             imageFormat="png",
             imageWidth=854,  # 480p
             imageHeight=480,
             imageCompressionQuality=85
-        ))
+        )
         # OBS takes a moment to save the file
         await asyncio.sleep(0.5)
         
         # Find the most recent PNG in OBS screenshot directory
         return get_latest_screenshot()
     finally:
-        await ws.disconnect()
+        ws.close()
 
 
 def get_latest_screenshot() -> Path:
@@ -136,12 +136,15 @@ async def capture_clock_image() -> Path:
 
 if __name__ == "__main__":
     # Test the capture workflow
-    async def main():
-        try:
-            image_path = await capture_clock_image()
-            print(f"Final image ready: {image_path}")
-        except Exception as e:
-            print(f"Error: {e}")
-            raise
-    
-    asyncio.run(main())
+    import sys
+    try:
+        import asyncio
+        image_path = asyncio.run(capture_clock_image())
+        print(f"Final image ready: {image_path}")
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+def main():
+    """Entry point for the CLI command."""
+    asyncio.run(capture_clock_image())

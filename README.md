@@ -82,9 +82,9 @@ This captures directly from the camera source at reduced resolution, avoiding th
 3. **Set password:** Note this for `~/.config/ai-tells-time/.env`
 4. **Create a text source:** Name it `text_gpt` for the script to update
 
-## .env File Location
+## .env File Location (Mac Mini)
 
-Create `~/.config/ai-tells-time/.env` on the Mac Mini with:
+Create `~/.config/ai-tells-time/.env` **on the Mac Mini** with:
 ```env
 OBS_WEBSOCKET_HOST=localhost
 OBS_WEBSOCKET_PORT=4455
@@ -92,6 +92,14 @@ OBS_WEBSOCKET_PASSWORD=your_obs_password_here
 ```
 
 For testing without API keys, only the OBS variables are required.
+
+## Deployment Architecture
+
+**Important:** OBS and this application run on a separate Mac Mini (not this development machine). The Mac Mini serves as both the application runtime and GitHub Actions self-hosted runner.
+
+### Development Workflow
+- **This machine (your Mac):** Code development, git commits, running tests
+- **Mac Mini:** OBS running with WebSocket, application execution, streaming to Twitch/YouTube
 
 ## Mac Mini Setup (Self-Hosted GitHub Actions Runner)
 
@@ -150,19 +158,3 @@ tar xzf ./actions-runner.tar.gz
 - GitHub Personal Access Token with `repo` scope
 - OBS WebSocket enabled on the Mac Mini
 - Python 3.12+ installed
-
-1. **Enable WebSocket Server:** OBS → Tools → WebSocket Server Settings → Enable
-2. **Set port:** Default 4455 (can be changed, update `OBS_WEBSOCKET_PORT` in `.env`)
-3. **Set password:** Note this for `~/.config/ai-tells-time/.env`
-4. **Create a text source:** Name it `text_gpt` for the script to update
-
-## .env File Location
-
-Create `~/.config/ai-tells-time/.env` on the Mac Mini with:
-```env
-OBS_WEBSOCKET_HOST=localhost
-OBS_WEBSOCKET_PORT=4455
-OBS_WEBSOCKET_PASSWORD=your_obs_password_here
-```
-
-For testing without API keys, only the OBS variables are required.
