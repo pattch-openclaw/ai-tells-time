@@ -25,3 +25,4 @@ Live stream where AI vision models tell time from analog clock images. Embrace h
 - **CI/CD:** Updated workflow to do clean sync (`rm -rf .venv uv.lock`) before `uv sync`
 - **Python version:** Pinned to 3.12 via `.python-version`
 - **UV cache:** Added `uv cache clean` step to clear stale metadata
+- **DEPLOY-MAINTENANCE.md:** Added maintenance notes for future deployment troubleshooting
