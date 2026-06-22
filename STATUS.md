@@ -1,8 +1,8 @@
-# ai-tells-time
+# AI Tells Time - Status
 
 ## Overview
 
-Live stream where AI vision models tell time from analog clock images. embrace hallucinations as a feature.
+Live stream where AI vision models tell time from analog clock images. Embrace hallucinations as a feature.
 
 ## Current Status
 
@@ -17,3 +17,9 @@ Live stream where AI vision models tell time from analog clock images. embrace h
 2. **AI API Integration:** Integrate OpenAI, Anthropic, and Gemini vision APIs
 3. **Structured Output Parsing:** Systematic prompts + JSON parsing for time extraction
 4. **OBS WebSocket Updates:** Update text sources with AI responses (basic OBS integration already working)
+
+## Recent Updates
+
+- **obs-websocket-python:** Changed version requirement from `>=2.1.0` to `>=2.0.0`
+- **CI/CD:** Updated workflow to do clean sync (`rm -rf .venv uv.lock`) before `uv sync`
+- **Documentation:** Added `CLEAN-INSTALL.md` and updated `SETUP.md` with clean install steps

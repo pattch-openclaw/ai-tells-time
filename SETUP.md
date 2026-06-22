@@ -13,16 +13,18 @@
 cd /Users/sam/Coding/ai-tells-time
 
 # uv will automatically use the pinned Python version (3.12)
+# Clean slate: remove old venv and lockfile
+rm -rf .venv uv.lock
+
 # Install dependencies with uv
 uv sync
+```
 
-# Create environment config file
-mkdir -p ~/.config/ai-tells-time
-cat > ~/.config/ai-tells-time/.env << EOF
-OBS_WEBSOCKET_HOST=localhost
-OBS_WEBSOCKET_PORT=4455
-OBS_WEBSOCKET_PASSWORD=***
-EOF
+If you need to regenerate the lockfile:
+
+```bash
+uv lock
+uv sync
 ```
 
 ## Configuration

@@ -20,8 +20,10 @@ jobs:
         run: |
           uv python pin 3.12
 
-      - name: Install dependencies
+      - name: Install dependencies (clean sync)
         run: |
+          cd /Users/sam/Coding/ai-tells-time
+          rm -rf .venv uv.lock
           uv sync
 
       - name: Ensure secrets directory exists
