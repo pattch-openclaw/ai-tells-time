@@ -9,9 +9,10 @@ from pathlib import Path
 # Load environment variables from ~/.config/ai-tells-time/.env (secure location)
 config_path = Path.home() / ".config" / "ai-tells-time" / ".env"
 if config_path.exists():
+    print(f"Loading config from {config_path}...")
     load_dotenv(config_path)
 else:
-    # Fallback to project directory for development
+    print(f"Config file not found at {config_path}, falling back to project directory...")
     load_dotenv()
 
 OBS_HOST = os.getenv("OBS_WEBSOCKET_HOST", "localhost")
