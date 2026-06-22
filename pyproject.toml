@@ -3,7 +3,7 @@ name = "ai-tells-time"
 version = "0.1.0"
 description = "AI vision models trying to tell the time from clock images"
 authors = [
-    {name = "Sam", email = "innovatests"}
+    {name = "Sam", email = "sam@pattch-openclaw.dev"}
 ]
 dependencies = [
     "python-dotenv>=1.0.0",
