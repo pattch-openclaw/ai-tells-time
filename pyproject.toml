@@ -12,9 +12,20 @@ dependencies = [
 [project.scripts]
 ai-tells-time-capture = "src.capture:main"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
 [tool.hatch.build]
 packages = ["src"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.4.0",
+]

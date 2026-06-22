@@ -9,6 +9,7 @@ downscaled images for AI analysis.
 import argparse
 import asyncio
 import os
+import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -28,7 +29,7 @@ else:
 # Configuration
 OBS_SOURCE_NAME = "Clock_Camera"
 OBS_HOST = os.environ.get("OBS_WEBSOCKET_HOST", "localhost")
-OBS_PORT = int(os.environ.get("OBS_WEBSOCKET_PORT", 4455))
+OBS_PORT = int(os.environ.get("OBS_WEBSOCKET_PORT", "4455"))
 OBS_PASSWORD = os.environ.get("OBS_WEBSOCKET_PASSWORD", "")
 
 # OBS default screenshot directory (macOS) - kept for reference but not used with new API
@@ -47,7 +48,10 @@ def parse_resolution(resolution_str: str) -> Tuple[int, int]:
         width, height = resolution_str.lower().split('x')
         return int(width), int(height)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"Invalid resolution format: {resolution_str}. Use WIDTHxHEIGHT (e.g., 854x480)")
+        raise argparse.ArgumentTypeError(
+            f"Invalid resolution format: {resolution_str}. "
+            f"Use WIDTHxHEIGHT (e.g., 854x480)"
+        )
 
 
 async def connect_to_obs() -> ReqClient:
