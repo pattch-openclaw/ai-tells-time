@@ -127,6 +127,7 @@ The OBS WebSocket connection and image capture are fully functional:
 - ✅ Authenticates with the WebSocket password
 - ✅ Updates text sources in OBS scenes (via `main.py`)
 - ✅ Captures clock images using `save_source_screenshot` (via `ai-tells-time-capture`)
+  - Images saved to OS temp directory (use `~/Pictures/ai-tells-time/` in future)
 - ❌ AI API integration (OpenAI, Anthropic, Gemini) - not yet implemented
 - ❌ Text-to-Speech (TTS) - not yet implemented
 
@@ -135,10 +136,12 @@ The OBS WebSocket connection and image capture are fully functional:
 The capture script successfully:
 1. Connects to OBS WebSocket
 2. Calls `save_source_screenshot` on the `Clock_Camera` source
-3. Saves the image directly to `~/Library/Caches/ai-tells-time/clock_temp_*.png`
+3. Saves the image directly to `/var/folders/.../ai-tells-time/clock_temp_*.png` (OS temp dir)
 4. Image is captured at 854x480 (480p) in PNG format with 85% quality
 
 Run with: `uv run ai-tells-time-capture`
+
+**Note:** Images are currently saved to the OS temp directory. We should move these to a more persistent location (e.g., `~/Pictures/ai-tells-time/`) for easier access and debugging.
 
 ### Next Steps
 - Implement AI vision model integration to tell time from clock images
