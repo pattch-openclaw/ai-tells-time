@@ -120,20 +120,32 @@ tar xzf ./actions-runner.tar.gz
 ./svc.sh start
 ```
 
-### Current Status: ✅ OBS WebSocket Working
+### Current Status: ✅ OBS WebSocket + Image Capture Working
 
-The basic OBS WebSocket connection is fully functional. The script:
+The OBS WebSocket connection and image capture are fully functional:
 - ✅ Connects to OBS on localhost:4455
 - ✅ Authenticates with the WebSocket password
-- ✅ Updates text sources in OBS scenes
+- ✅ Updates text sources in OBS scenes (via `main.py`)
+- ✅ Captures clock images using `save_source_screenshot` (via `ai-tells-time-capture`)
 - ❌ AI API integration (OpenAI, Anthropic, Gemini) - not yet implemented
 - ❌ Text-to-Speech (TTS) - not yet implemented
+
+### Image Capture Workflow (Verified)
+
+The capture script successfully:
+1. Connects to OBS WebSocket
+2. Calls `save_source_screenshot` on the `Clock_Camera` source
+3. Saves the image directly to `~/Library/Caches/ai-tells-time/clock_temp_*.png`
+4. Image is captured at 854x480 (480p) in PNG format with 85% quality
+
+Run with: `uv run ai-tells-time-capture`
 
 ### Next Steps
 - Implement AI vision model integration to tell time from clock images
 - Add TTS for audio responses
 - Set up clock image source (physical webcam or generated image)
 - Configure simulcasting to Twitch/YouTube
+- Implement AI vision model to tell time from captured clock images
 
 ## Development Practices
 
