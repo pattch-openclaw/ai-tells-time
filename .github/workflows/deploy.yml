@@ -25,6 +25,10 @@ jobs:
         run: |
           uv python pin 3.12
 
+      - name: Clear UV cache
+        run: |
+          uv cache clean
+
       - name: Install dependencies (clean sync)
         working-directory: /Users/sam/Coding/ai-tells-time
         run: |
