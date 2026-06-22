@@ -5,7 +5,7 @@ description = "Live stream where AI vision models tell time from analog clock im
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "obs-websocket-python>=2.0.0",
+    "obs-websocket-python>=2.1.0",
 ]
 
 [project.scripts]

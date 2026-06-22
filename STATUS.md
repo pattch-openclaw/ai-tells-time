@@ -20,6 +20,5 @@ Live stream where AI vision models tell time from analog clock images. Embrace h
 
 ## Recent Updates
 
-- **obs-websocket-python:** Changed version requirement from `>=2.1.0` to `>=2.0.0`
+- **obs-websocket-python:** Reverted to `>=2.1.0` (was `>=2.0.0`) - the original version was correct
 - **CI/CD:** Updated workflow to do clean sync (`rm -rf .venv uv.lock`) before `uv sync`
-- **Documentation:** Added `CLEAN-INSTALL.md` and updated `SETUP.md` with clean install steps
