@@ -140,11 +140,11 @@ uv run ai-tells-time-capture --resolution 1920x1080
 # Capture and save to a specific directory
 uv run ai-tells-time-capture --output ~/Pictures/ai-tells-time
 
-# Run the full capture loop (capture every minute)
-uv run ai-tells-time
+# Run the application (captures every minute, updates OBS)
+uv run python main.py
 
 # Single capture with custom settings
-uv run ai-tells-time --single --resolution 854x480 --output ~/Coding/ai-tells-time-output
+uv run ai-tells-time-capture --resolution 854x480 --output ~/Coding/ai-tells-time-output
 ```
 
 ### ✅ OBS WebSocket + Image Capture Working (Legacy)
