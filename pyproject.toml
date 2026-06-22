@@ -1,23 +1,21 @@
-name: ai-tells-time
-
-description: AI vision models trying to tell the time from clock images
-
-version: 0.1.0
-
-authors:
-  - Sam <innovatests>
-
+[project]
+name = "ai-tells-time"
+version = "0.1.0"
+description = "AI vision models trying to tell the time from clock images"
+authors = [
+    {name = "Sam", email = "innovatests"}
+]
 dependencies = [
     "python-dotenv>=1.0.0",
-    "obs-websocket-py>=1.4.0",
+    "obsws-python>=1.4.0",
     "openai>=1.0.0",
     "anthropic>=0.7.0",
     "google-generativeai>=0.3.0",
 ]
 
+[project.scripts]
+ai-tells-time = "main:main"
+
 [build-system]
 requires = ["uv>=0.1.0", "setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
-
-[project.scripts]
-ai-tells-time = "main:main"
