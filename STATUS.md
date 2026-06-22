@@ -20,7 +20,8 @@ Live stream where AI vision models tell time from analog clock images. Embrace h
 
 ## Recent Updates
 
-- **obs-websocket-python:** Changed to `obsws-python` (correct PyPI package name)
+- **obsws-python:** Changed to `>=1.8.0` (available version is `<=1.8.0`)
 - **src/capture.py:** Recreated actual Python code (was missing from earlier commits)
 - **CI/CD:** Updated workflow to do clean sync (`rm -rf .venv uv.lock`) before `uv sync`
 - **Python version:** Pinned to 3.12 via `.python-version`
+- **UV cache:** Added `uv cache clean` step to clear stale metadata
