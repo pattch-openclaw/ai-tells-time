@@ -43,6 +43,38 @@ Need to balance cost vs "personality". Since hallucinations are desired, cheaper
 *   **Deployment Workflow:** Pushing to `main` branch triggers GitHub Actions on the Mac Mini to pull latest changes, sync dependencies with `uv`, and restart the application.
 *   **Configuration:** Environment variables (OBS credentials, API keys) are stored in `~/.config/ai-tells-time/.env` on the Mac Mini, NOT in the repository.
 
+## 7. Image Capture Workflow
+
+Since we're already using OBS for compositing, we'll leverage OBS to capture clock images:
+
+1. **Trigger Screenshot:** Use `GetSourceScreenshot` via obs-websocket to capture the `Clock_Camera` source
+2. **OBS Output:** Screenshots saved to default OBS folder (`~/Pictures/OBS/` on macOS)
+3. **File Management:** Monitor the OBS directory, move latest PNG to project temp folder
+4. **Downscale:** Reduce to 480p (854x480) for cost efficiency while maintaining readability
+5. **Cleanup:** Remove old temp files after each loop iteration
+
+### OBS Source Name
+- `Clock_Camera` (the camera source we'll capture from)
+
+### Screenshot Settings
+- Format: PNG
+- Resolution: 854x480 (480p) - balances readability with API token costs
+- Compression: 85% quality (smaller files, still high quality)
+
+### Example OBS WebSocket Screenshot Call
+
+```python
+await ws.call(requests.GetSourceScreenshot(
+    sourceName="Clock_Camera",
+    imageFormat="png",
+    imageWidth=854,
+    imageHeight=480,
+    imageCompressionQuality=85
+))
+```
+
+This captures directly from the camera source at reduced resolution, avoiding the need for post-capture downscaling.
+
 ## OBS WebSocket Configuration
 
 1. **Enable WebSocket Server:** OBS → Tools → WebSocket Server Settings → Enable

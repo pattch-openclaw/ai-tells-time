@@ -1,21 +1,16 @@
 [project]
 name = "ai-tells-time"
 version = "0.1.0"
-description = "AI vision models trying to tell the time from clock images"
-authors = [
-    {name = "Sam", email = "innovatests+openclaw@gmail.com"}
-]
+description = "Live stream where AI vision models tell time from analog clock images"
+readme = "README.md"
+requires-python = ">=3.12"
 dependencies = [
-    "python-dotenv>=1.0.0",
-    "obsws-python>=1.4.0",
-    "openai>=1.0.0",
-    "anthropic>=0.7.0",
-    "google-generativeai>=0.3.0",
+    "obs-websocket-python>=2.1.0",
 ]
 
 [project.scripts]
-ai-tells-time = "main:main"
+ai-tells-time-capture = "src.capture:main"
 
 [build-system]
-requires = ["uv>=0.1.0", "setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

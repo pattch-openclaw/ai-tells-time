@@ -1,0 +1,68 @@
+# AI Tells Time - Project Setup
+
+## Prerequisites
+
+- Python 3.12+
+- OBS Studio with WebSocket plugin enabled
+- OBS source named `Clock_Camera`
+
+## Installation
+
+```bash
+# Clone the repository
+cd /Users/sam/Coding/ai-tells-time
+
+# Install dependencies with uv
+uv sync
+
+# Create environment config file
+mkdir -p ~/.config/ai-tells-time
+cat > ~/.config/ai-tells-time/.env << EOF
+OBS_WEBSOCKET_HOST=localhost
+OBS_WEBSOCKET_PORT=4455
+OBS_WEBSOCKET_PASSWORD=your_password
+EOF
+```
+
+## Configuration
+
+Create `~/.config/ai-tells-time/.env` with:
+
+```env
+OBS_WEBSOCKET_HOST=localhost
+OBS_WEBSOCKET_PORT=4455
+OBS_WEBSOCKET_PASSWORD=your_obs_websocket_password
+```
+
+## OBS Setup
+
+1. Enable WebSocket Server: OBS → Tools → WebSocket Server Settings → Enable
+2. Set port: Default 4455 (update if different)
+3. Create source named `Clock_Camera` (your camera source)
+4. Create text source named `text_gpt` (for AI responses)
+
+## Usage
+
+### Capture a single clock image
+
+```bash
+uv run ai-tells-time-capture
+```
+
+This will:
+1. Trigger screenshot from `Clock_Camera`
+2. Save to temp directory with timestamp
+3. Return the path to the captured image
+
+### In Python
+
+```python
+from src.capture import capture_clock_image
+import asyncio
+
+async def main():
+    image_path = await capture_clock_image()
+    print(f"Image: {image_path}")
+
+asyncio.run(main())
+```

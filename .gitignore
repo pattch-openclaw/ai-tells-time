@@ -1,7 +1,39 @@
-.env
-.venv/
-__pycache__/
-*.pyc
-*.mp3
-current_clock.png
+# /Users/sam/Coding/ai-tells-time/.gitignore
 
+# Python source files
+src/__pycache__/
+*.py[cod]
+*$py.class
+
+# Temp files (processed images)
+/tmp/ai-tells-time/
+*.tmp
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (sensitive)
+.env
+.env.local
+
+# OBS scene collections (optional - can be gitignored if large)
+# obs-assets/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+```
