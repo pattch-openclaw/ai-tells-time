@@ -11,6 +11,9 @@ dependencies = [
 [project.scripts]
 ai-tells-time-capture = "src.capture:main"
 
+[tool.hatch.build]
+packages = ["src"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
