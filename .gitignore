@@ -9,6 +9,9 @@ src/__pycache__/
 /tmp/ai-tells-time/
 *.tmp
 
+# Output directory (processed images outside git repo)
+Coding/ai-tells-time-output/
+
 # Virtual environments
 .venv/
 venv/

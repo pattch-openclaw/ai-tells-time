@@ -120,14 +120,41 @@ tar xzf ./actions-runner.tar.gz
 ./svc.sh start
 ```
 
-### Current Status: ✅ OBS WebSocket + Image Capture Working
+## Current Status
+
+### ✅ Image Capture Pipeline (v2 - Updated)
+
+The image capture system has been enhanced with configurable resolution and output location:
+
+**Features:**
+- ✅ Configurable output resolution (e.g., `854x480`, `1920x1080`)
+- ✅ Configurable output directory for captured images
+- ✅ Automatic file management with timestamps
+- ✅ Main loop for periodic captures with `--single` mode for one-off captures
+
+**New Commands:**
+```bash
+# Capture a single image with custom resolution
+uv run ai-tells-time-capture --resolution 1920x1080
+
+# Capture and save to a specific directory
+uv run ai-tells-time-capture --output ~/Pictures/ai-tells-time
+
+# Run the full capture loop (capture every minute)
+uv run ai-tells-time
+
+# Single capture with custom settings
+uv run ai-tells-time --single --resolution 854x480 --output ~/Coding/ai-tells-time-output
+```
+
+### ✅ OBS WebSocket + Image Capture Working (Legacy)
 
 The OBS WebSocket connection and image capture are fully functional:
 - ✅ Connects to OBS on localhost:4455
 - ✅ Authenticates with the WebSocket password
 - ✅ Updates text sources in OBS scenes (via `main.py`)
 - ✅ Captures clock images using `save_source_screenshot` (via `ai-tells-time-capture`)
-  - Images saved to OS temp directory (use `~/Pictures/ai-tells-time/` in future)
+  - Images saved to configurable location (default: temp directory)
 - ❌ AI API integration (OpenAI, Anthropic, Gemini) - not yet implemented
 - ❌ Text-to-Speech (TTS) - not yet implemented
 
@@ -136,12 +163,16 @@ The OBS WebSocket connection and image capture are fully functional:
 The capture script successfully:
 1. Connects to OBS WebSocket
 2. Calls `save_source_screenshot` on the `Clock_Camera` source
-3. Saves the image directly to `/var/folders/.../ai-tells-time/clock_temp_*.png` (OS temp dir)
-4. Image is captured at 854x480 (480p) in PNG format with 85% quality
+3. Saves the image directly to the specified output directory
+4. Image is captured at configurable resolution (default: 854x480) in PNG format with 85% quality
+
+**Output Location:**
+- By default: OS temp directory (`/var/folders/.../ai-tells-time/clock_temp_*.png`)
+- With `--output`: Configurable location (e.g., `~/Coding/ai-tells-time-output/`)
+
+**Note:** Images are saved to a directory outside the git repository (`Coding/ai-tells-time-output/`) to avoid cluttering git status. The directory is tracked in `.gitignore`.
 
 Run with: `uv run ai-tells-time-capture`
-
-**Note:** Images are currently saved to the OS temp directory. We should move these to a more persistent location (e.g., `~/Pictures/ai-tells-time/`) for easier access and debugging.
 
 ### Next Steps
 - Implement AI vision model integration to tell time from clock images
