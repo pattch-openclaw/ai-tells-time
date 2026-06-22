@@ -8,7 +8,6 @@ downscaled images for AI analysis.
 
 import asyncio
 import os
-import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -31,8 +30,8 @@ OBS_HOST = os.environ.get("OBS_WEBSOCKET_HOST", "localhost")
 OBS_PORT = int(os.environ.get("OBS_WEBSOCKET_PORT", 4455))
 OBS_PASSWORD = os.environ.get("OBS_WEBSOCKET_PASSWORD", "")
 
-# OBS default screenshot directory (macOS)
-OBS_SCREENSHOT_DIR = Path.home() / "Pictures" / "OBS"
+# OBS default screenshot directory (macOS) - kept for reference but not used with new API
+# OBS_SCREENSHOT_DIR = Path.home() / "Pictures" / "OBS"
 
 # Project temp directory for processed images
 TEMP_DIR = Path(tempfile.gettempdir()) / "ai-tells-time"
@@ -48,61 +47,28 @@ async def trigger_screenshot(source_name: str = OBS_SOURCE_NAME) -> Path:
     """
     Trigger a screenshot capture from OBS and return the path to the captured file.
     
-    OBS saves screenshots to its default directory. We'll monitor and move the latest one.
+    Uses the new save_source_screenshot API which saves directly to a file path.
     """
     ws = ReqClient(host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD)
     try:
-        ws.call(
-            "GetSourceScreenshot",
-            sourceName=source_name,
-            imageFormat="png",
-            imageWidth=854,  # 480p
-            imageHeight=480,
-            imageCompressionQuality=85
-        )
-        # OBS takes a moment to save the file
-        await asyncio.sleep(0.5)
+        # Create a temp file path for the screenshot
+        TEMP_DIR.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        temp_path = TEMP_DIR / f"clock_temp_{timestamp}.png"
         
-        # Find the most recent PNG in OBS screenshot directory
-        return get_latest_screenshot()
+        # Save screenshot directly to temp path
+        ws.save_source_screenshot(
+            name=source_name,
+            img_format="png",
+            file_path=str(temp_path),
+            width=854,  # 480p
+            height=480,
+            quality=85
+        )
+        
+        return temp_path
     finally:
-        ws.close()
-
-
-def get_latest_screenshot() -> Path:
-    """
-    Find the most recent PNG file in the OBS screenshot directory.
-    
-    Returns the path to the latest screenshot file.
-    """
-    if not OBS_SCREENSHOT_DIR.exists():
-        raise FileNotFoundError(f"OBS screenshot directory not found: {OBS_SCREENSHOT_DIR}")
-    
-    png_files = list(OBS_SCREENSHOT_DIR.glob("*.png"))
-    if not png_files:
-        raise FileNotFoundError(f"No PNG files found in {OBS_SCREENSHOT_DIR}")
-    
-    # Return the most recently modified file
-    return max(png_files, key=lambda p: p.stat().st_mtime)
-
-
-def move_to_temp_dir(source_path: Path) -> Path:
-    """
-    Move a screenshot to the project temp directory with a timestamped name.
-    
-    Returns the new path in the temp directory.
-    """
-    TEMP_DIR.mkdir(parents=True, exist_ok=True)
-    
-    # Create timestamped filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    new_name = f"clock_{timestamp}.png"
-    dest_path = TEMP_DIR / new_name
-    
-    # Move the file
-    shutil.move(str(source_path), str(dest_path))
-    
-    return dest_path
+        ws.disconnect()
 
 
 def cleanup_temp_dir(hours_old: int = 1) -> None:
@@ -127,15 +93,11 @@ async def capture_clock_image() -> Path:
     """
     Main entry point for clock image capture.
     
-    Returns the path to the processed image in the temp directory.
+    Returns the path to the captured image in the temp directory.
     """
-    # Trigger screenshot in OBS
-    obs_path = await trigger_screenshot()
-    print(f"Captured from OBS: {obs_path}")
-    
-    # Move to temp directory with timestamp
-    temp_path = move_to_temp_dir(obs_path)
-    print(f"Moved to temp: {temp_path}")
+    # Trigger screenshot in OBS (saves directly to temp dir with new API)
+    temp_path = await trigger_screenshot()
+    print(f"Captured from OBS: {temp_path}")
     
     # Optional: cleanup old files
     cleanup_temp_dir(hours_old=1)
