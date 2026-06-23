@@ -141,7 +141,7 @@ uv run ai-tells-time-capture --resolution 1920x1080
 uv run ai-tells-time-capture --output ~/Pictures/ai-tells-time
 
 # Run the cleanup routine to purge temporary and output folders
-uv run ai-tells-time-cleanup
+uv run cleanup
 
 # Run the application (captures every minute, updates OBS)
 uv run python main.py

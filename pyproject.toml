@@ -11,7 +11,7 @@ dependencies = [
 
 [project.scripts]
 ai-tells-time-capture = "src.capture:main"
-ai-tells-time-cleanup = "src.cleanup:main"
+cleanup = "src.cleanup:main"
 
 [project.optional-dependencies]
 dev = [
