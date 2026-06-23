@@ -165,23 +165,63 @@ class OpenAIProvider(BaseInferenceProvider):
         return attempt < 3
 
 
+from pydantic import BaseModel
+
+class TimeResponse(BaseModel):
+    """Structured output schema for the AI to conform to."""
+    time_hh_mm: str
+
 class GeminiProvider(BaseInferenceProvider):
-    """Google Gemini provider for time inference."""
+    """Google Gemini provider for time inference using Structured Outputs."""
     
-    def __init__(self):
+    def __init__(self, model_name: str = "gemini-2.5-flash"):
         super().__init__("gemini")
-        # TODO: Implement API key loading and client setup
+        self.model_name = model_name
+        self._client = None
+        
+    @property
+    def client(self):
+        if self._client is None:
+            from google import genai
+            # Automatically picks up GEMINI_API_KEY from environment
+            self._client = genai.Client()
+        return self._client
     
     async def tell_time(self, image_path: Path) -> str:
-        # TODO: Implement Gemini API call
-        return "Gemini provider not yet implemented"
+        from google.genai import types
+        
+        image_bytes = image_path.read_bytes()
+        prompt = format_prompt("default")
+        
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=[
+                types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+                prompt
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=TimeResponse,
+                temperature=0.7,
+            )
+        )
+        return response.text
     
     async def parse_response(self, raw_response: str) -> Optional[str]:
-        # TODO: Implement response parsing
+        import json
+        try:
+            # We expect strict JSON from the structured output
+            data = json.loads(raw_response)
+            if "time_hh_mm" in data:
+                return data["time_hh_mm"]
+        except Exception:
+            pass
+            
+        # Fallback to the default regex extraction if JSON fails somehow
         return extract_time_from_text(raw_response)
     
     async def handle_error(self, error: Exception, attempt: int) -> bool:
-        # TODO: Implement error handling
+        print(f"Gemini API Error (Attempt {attempt}): {error}")
         return attempt < 3
 
 
