@@ -23,17 +23,18 @@ A key design philosophy of this project is that **AI hallucinations are a featur
 *   **Python Integration:** `obsws-python` library to allow our script to remotely control OBS (update text sources, trigger TTS audio, swap clock images).
 *   **Configuration Management:** OBS "Scene Collections" will be exported as JSON files and tracked in this repository under `obs-assets/` alongside any static stream overlays. Connection credentials (host, port, password) are managed via `~/.config/ai-tells-time/.env` on the Mac Mini.
 *   **Simulcasting:** Restream.io vs local OBS Multistream plugin (Aitum).
-*   **Status:** ✅ OBS WebSocket connection is working. The script successfully connects to OBS and updates text sources. API integrations (OpenAI, Anthropic, Gemini) are not yet implemented.
+*   **Status:** ✅ OBS WebSocket connection is working. The script successfully connects to OBS and updates text sources. Gemini API integration is fully implemented and working end-to-end.
 
 ### 3. Vision Models
 Need to balance cost vs "personality". Since hallucinations are desired, cheaper or smaller models might actually be *better*.
 *   **Local/Free:** `ollama` running lightweight vision models (like `moondream`, `llava:7b`, or `llama3.2-vision:11b`). These will run efficiently on the target M4 Mac Mini utilizing Apple Silicon's unified memory, acting as our chaotic baseline.
-*   **API (Cheap/Free tiers):** `gemini-2.0-flash` (or 1.5), `gpt-4o-mini`, `claude-3-haiku`. 
+*   **API (Cheap/Free tiers):** `gemini-2.5-flash` (currently implemented), `gpt-4o-mini`, `claude-3-haiku`. 
+*   **Status:** ✅ Gemini provider is fully implemented and tested. Additional providers (OpenAI, Claude, Ollama) can be added by implementing the `BaseInferenceProvider` interface.
 
 ### 4. Text-to-Speech (TTS)
 *   Needs to be free/cheap given the 1-minute interval (1,440 requests/day).
 *   **Proposed:** `edge-tts` (hooks into Microsoft Edge's free Azure TTS API) or local open-source options like Piper.
-*   **Status:** Lower priority. The current focus is on getting AI integration working and updating the text interfaces.
+*   **Status:** Lower priority. The current focus is on getting AI integration working and updating the text interfaces. Gemini is fully implemented.
 
 ### 5. The Clock Source
 *   **Settled:** A physical webcam pointed at a real, cheap analog clock. We already have a working setup in OBS and are actively capturing stills from this camera. (High hallucination potential due to glare, angles, and physical oddities).
@@ -82,16 +83,22 @@ This captures directly from the camera source at reduced resolution, avoiding th
 3. **Set password:** Note this for `~/.config/ai-tells-time/.env`
 4. **Create a text source:** Name it `text_gpt` for the script to update
 
-## .env File Location (Mac Mini)
+## .env File Location
 
-Create `~/.config/ai-tells-time/.env` **on the Mac Mini** with:
+Create `~/.config/ai-tells-time/.env` with required environment variables:
 ```env
+# OBS WebSocket Settings
 OBS_WEBSOCKET_HOST=localhost
 OBS_WEBSOCKET_PORT=4455
 OBS_WEBSOCKET_PASSWORD=your_obs_password_here
+
+# AI API Settings
+GEMINI_API_KEY=your-gemini-api-key-here  # Required for Gemini provider
+# OPENAI_API_KEY=***  # Optional, for future OpenAI provider
+# ANTHROPIC_API_KEY=***  # Optional, for future Claude provider
 ```
 
-For testing without API keys, only the OBS variables are required.
+For testing without API keys, only the OBS variables are required. Gemini integration requires a valid API key starting with `AIza...`.
 
 ## Deployment Architecture
 
@@ -121,6 +128,33 @@ tar xzf ./actions-runner.tar.gz
 ```
 
 ## Current Status
+
+### ✅ Gemini Provider Integration (Working End-to-End)
+
+The Gemini API integration is now fully functional:
+- ✅ Configurable provider selection via `--providers` CLI flag
+- ✅ Gemini provider using Google's `genai` SDK with Structured Outputs
+- ✅ JSON-formatted responses for reliable time parsing
+- ✅ Configurable API key via `GEMINI_API_KEY` environment variable
+- ✅ Automatic retries with exponential backoff
+
+**Setup:**
+1. Get a server API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - The key must start with `AIza...` (not `gen-lang-client-...`)
+2. Add to your `.env` file: `GEMINI_API_KEY=your-key-here`
+3. Run with: `uv run python main.py`
+
+**Provider Selection:**
+```bash
+# Default: run all implemented providers (currently just gemini)
+uv run python main.py
+
+# Run only gemini
+uv run python main.py --providers gemini
+
+# Run multiple providers (when implemented)
+uv run python main.py --providers gemini openai
+```
 
 ### ✅ Image Capture Pipeline (v2 - Updated)
 
@@ -178,7 +212,7 @@ The capture script successfully:
 Run with: `uv run capture`
 
 ### Next Steps
-- Implement AI vision model integration to tell time from captured clock images and update OBS text interfaces
+- Implement additional AI vision model providers (OpenAI, Claude, Ollama)
 - Configure simulcasting to Twitch/YouTube
 - (Lower Priority) Add TTS for audio responses
 
@@ -228,3 +262,4 @@ git commit -m "Resolve uv.lock merge conflict"
 - GitHub Personal Access Token with `repo` scope
 - OBS WebSocket enabled on the Mac Mini
 - Python 3.12+ installed
+- GEMINI_API_KEY set in `.env` for Gemini provider
