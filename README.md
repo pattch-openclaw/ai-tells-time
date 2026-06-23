@@ -33,10 +33,10 @@ Need to balance cost vs "personality". Since hallucinations are desired, cheaper
 ### 4. Text-to-Speech (TTS)
 *   Needs to be free/cheap given the 1-minute interval (1,440 requests/day).
 *   **Proposed:** `edge-tts` (hooks into Microsoft Edge's free Azure TTS API) or local open-source options like Piper.
+*   **Status:** Lower priority. The current focus is on getting AI integration working and updating the text interfaces.
 
 ### 5. The Clock Source
-*   **Option A:** A physical webcam pointed at a real, cheap analog clock. (High hallucination potential due to glare, angles, and physical oddities).
-*   **Option B:** A programmatically generated image of a clock using Python `Pillow`. (Cleaner, but maybe too easy for the AIs?).
+*   **Settled:** A physical webcam pointed at a real, cheap analog clock. We already have a working setup in OBS and are actively capturing stills from this camera. (High hallucination potential due to glare, angles, and physical oddities).
 
 ### 6. Deployment
 *   **Target Machine:** Apple Silicon Mac Mini (M4) serving as both the application runtime and GitHub Actions self-hosted runner.
@@ -140,6 +140,9 @@ uv run ai-tells-time-capture --resolution 1920x1080
 # Capture and save to a specific directory
 uv run ai-tells-time-capture --output ~/Pictures/ai-tells-time
 
+# Run the cleanup routine to purge temporary and output folders
+uv run ai-tells-time-cleanup
+
 # Run the application (captures every minute, updates OBS)
 uv run python main.py
 
@@ -175,11 +178,9 @@ The capture script successfully:
 Run with: `uv run ai-tells-time-capture`
 
 ### Next Steps
-- Implement AI vision model integration to tell time from clock images
-- Add TTS for audio responses
-- Set up clock image source (physical webcam or generated image)
+- Implement AI vision model integration to tell time from captured clock images and update OBS text interfaces
 - Configure simulcasting to Twitch/YouTube
-- Implement AI vision model to tell time from captured clock images
+- (Lower Priority) Add TTS for audio responses
 
 ## Development Practices
 
