@@ -1,5 +1,6 @@
 import asyncio
 import time
+import argparse
 from datetime import datetime
 import obsws_python as obs
 import os
@@ -24,12 +25,50 @@ OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
 # Image capture settings
 CAPTURE_RESOLUTION = (854, 480)  # (width, height)
 
+# Available providers (all implemented providers)
+ALL_PROVIDERS = ["gemini"]  # Future: ["gemini", "openai", "claude", "ollama"]
+
 # Debug: print loaded values (password hidden)
 print(f"Config loaded from {config_path}:")
 print(f"  HOST: {OBS_HOST}")
 print(f"  PORT: {OBS_PORT}")
 print(f"  PASSWORD: {'***' if OBS_PASSWORD else '(empty)'}")
 print(f"  RESOLUTION: {CAPTURE_RESOLUTION[0]}x{CAPTURE_RESOLUTION[1]}")
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments for provider selection."""
+    parser = argparse.ArgumentParser(description="AI Tells Time - Broadcast system")
+    
+    # Provider selection flags
+    parser.add_argument(
+        "--providers",
+        type=str,
+        nargs="*",
+        default=None,
+        help="List of providers to enable. Options: gemini, openai, claude, ollama. Defaults to all implemented."
+    )
+    
+    args = parser.parse_args()
+    
+    # If no providers specified, use all implemented
+    if args.providers is None:
+        return args
+    
+    # Validate and filter providers
+    valid_providers = set(ALL_PROVIDERS)
+    selected = set(p.lower() for p in args.providers)
+    invalid = selected - valid_providers
+    
+    if invalid:
+        print(f"⚠️  Unknown providers: {invalid}")
+        print(f"   Valid options: {valid_providers}")
+        print(f"   Using all implemented providers: {ALL_PROVIDERS}")
+        args.providers = ALL_PROVIDERS
+    else:
+        args.providers = list(selected)
+    
+    return args
 
 
 async def run_inference_for_provider(provider, image_path: Path) -> tuple[str, str]:
@@ -53,10 +92,16 @@ async def run_inference_for_provider(provider, image_path: Path) -> tuple[str, s
 async def main_loop():
     print(f"Starting AI Tells Time...")
     
+    # Parse command line arguments for provider selection
+    args = parse_args()
+    
     # Initialize AI Providers
     providers = []
-    # In the future, we can add more providers to this list: ["gemini", "openai", "claude", "ollama"]
-    for provider_name in ["gemini"]:
+    providers_to_use = args.providers if args.providers else ALL_PROVIDERS
+    
+    print(f"Initializing providers: {providers_to_use}")
+    
+    for provider_name in providers_to_use:
         try:
             provider = get_provider(provider_name)
             providers.append(provider)
@@ -66,6 +111,8 @@ async def main_loop():
             
     if not providers:
         print("⚠️ No AI providers initialized. Will fall back to system time.")
+    else:
+        print(f"✅ Total providers ready: {len(providers)}")
 
     print(f"Attempting to connect to OBS at {OBS_HOST}:{OBS_PORT}...")
     
