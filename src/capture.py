@@ -154,7 +154,7 @@ def cleanup_temp_dir(hours_old: int = 1) -> None:
 
 
 async def capture_clock_image(
-    output_dir: Optional[Path] = None,
+    output_dir: Optional[Path] = OUTPUT_DIR,
     resolution: Tuple[int, int] = (854, 480)
 ) -> Path:
     """
@@ -191,7 +191,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output", "-o",
         type=Path,
-        help="Output directory for captured images (default: temp directory)"
+        default=OUTPUT_DIR,
+        help=f"Output directory for captured images (default: {OUTPUT_DIR})"
     )
     parser.add_argument(
         "--resolution", "-r",
@@ -207,7 +208,7 @@ def main():
     args = parse_args()
     
     # Convert output to Path if provided
-    output_dir = Path(args.output) if args.output else None
+    output_dir = Path(args.output) if args.output else OUTPUT_DIR
     
     asyncio.run(capture_clock_image(
         output_dir=output_dir,
