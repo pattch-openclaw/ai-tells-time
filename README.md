@@ -33,10 +33,10 @@ Need to balance cost vs "personality". Since hallucinations are desired, cheaper
 ### 4. Text-to-Speech (TTS)
 *   Needs to be free/cheap given the 1-minute interval (1,440 requests/day).
 *   **Proposed:** `edge-tts` (hooks into Microsoft Edge's free Azure TTS API) or local open-source options like Piper.
+*   **Status:** Lower priority. The current focus is on getting AI integration working and updating the text interfaces.
 
 ### 5. The Clock Source
-*   **Option A:** A physical webcam pointed at a real, cheap analog clock. (High hallucination potential due to glare, angles, and physical oddities).
-*   **Option B:** A programmatically generated image of a clock using Python `Pillow`. (Cleaner, but maybe too easy for the AIs?).
+*   **Settled:** A physical webcam pointed at a real, cheap analog clock. We already have a working setup in OBS and are actively capturing stills from this camera. (High hallucination potential due to glare, angles, and physical oddities).
 
 ### 6. Deployment
 *   **Target Machine:** Apple Silicon Mac Mini (M4) serving as both the application runtime and GitHub Actions self-hosted runner.
@@ -135,16 +135,19 @@ The image capture system has been enhanced with configurable resolution and outp
 **New Commands:**
 ```bash
 # Capture a single image with custom resolution
-uv run ai-tells-time-capture --resolution 1920x1080
+uv run capture --resolution 1920x1080
 
 # Capture and save to a specific directory
-uv run ai-tells-time-capture --output ~/Pictures/ai-tells-time
+uv run capture --output ~/Pictures/ai-tells-time
+
+# Run the cleanup routine to purge temporary and output folders
+uv run cleanup
 
 # Run the application (captures every minute, updates OBS)
 uv run python main.py
 
 # Single capture with custom settings
-uv run ai-tells-time-capture --resolution 854x480 --output ~/Coding/ai-tells-time-output
+uv run capture --resolution 854x480 --output ~/Coding/ai-tells-time-output
 ```
 
 ### ✅ OBS WebSocket + Image Capture Working (Legacy)
@@ -153,7 +156,7 @@ The OBS WebSocket connection and image capture are fully functional:
 - ✅ Connects to OBS on localhost:4455
 - ✅ Authenticates with the WebSocket password
 - ✅ Updates text sources in OBS scenes (via `main.py`)
-- ✅ Captures clock images using `save_source_screenshot` (via `ai-tells-time-capture`)
+- ✅ Captures clock images using `save_source_screenshot` (via `capture`)
   - Images saved to configurable location (default: temp directory)
 - ❌ AI API integration (OpenAI, Anthropic, Gemini) - not yet implemented
 - ❌ Text-to-Speech (TTS) - not yet implemented
@@ -172,14 +175,12 @@ The capture script successfully:
 
 **Note:** Images are saved to a directory outside the git repository (`Coding/ai-tells-time-output/`) to avoid cluttering git status. The directory is tracked in `.gitignore`.
 
-Run with: `uv run ai-tells-time-capture`
+Run with: `uv run capture`
 
 ### Next Steps
-- Implement AI vision model integration to tell time from clock images
-- Add TTS for audio responses
-- Set up clock image source (physical webcam or generated image)
+- Implement AI vision model integration to tell time from captured clock images and update OBS text interfaces
 - Configure simulcasting to Twitch/YouTube
-- Implement AI vision model to tell time from captured clock images
+- (Lower Priority) Add TTS for audio responses
 
 ## Development Practices
 
