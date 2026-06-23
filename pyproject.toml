@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ai-tells-time-capture = "src.capture:main"
+capture = "src.capture:main"
 cleanup = "src.cleanup:main"
 
 [project.optional-dependencies]

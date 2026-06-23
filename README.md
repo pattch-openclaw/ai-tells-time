@@ -135,10 +135,10 @@ The image capture system has been enhanced with configurable resolution and outp
 **New Commands:**
 ```bash
 # Capture a single image with custom resolution
-uv run ai-tells-time-capture --resolution 1920x1080
+uv run capture --resolution 1920x1080
 
 # Capture and save to a specific directory
-uv run ai-tells-time-capture --output ~/Pictures/ai-tells-time
+uv run capture --output ~/Pictures/ai-tells-time
 
 # Run the cleanup routine to purge temporary and output folders
 uv run cleanup
@@ -147,7 +147,7 @@ uv run cleanup
 uv run python main.py
 
 # Single capture with custom settings
-uv run ai-tells-time-capture --resolution 854x480 --output ~/Coding/ai-tells-time-output
+uv run capture --resolution 854x480 --output ~/Coding/ai-tells-time-output
 ```
 
 ### ✅ OBS WebSocket + Image Capture Working (Legacy)
@@ -156,7 +156,7 @@ The OBS WebSocket connection and image capture are fully functional:
 - ✅ Connects to OBS on localhost:4455
 - ✅ Authenticates with the WebSocket password
 - ✅ Updates text sources in OBS scenes (via `main.py`)
-- ✅ Captures clock images using `save_source_screenshot` (via `ai-tells-time-capture`)
+- ✅ Captures clock images using `save_source_screenshot` (via `capture`)
   - Images saved to configurable location (default: temp directory)
 - ❌ AI API integration (OpenAI, Anthropic, Gemini) - not yet implemented
 - ❌ Text-to-Speech (TTS) - not yet implemented
@@ -175,7 +175,7 @@ The capture script successfully:
 
 **Note:** Images are saved to a directory outside the git repository (`Coding/ai-tells-time-output/`) to avoid cluttering git status. The directory is tracked in `.gitignore`.
 
-Run with: `uv run ai-tells-time-capture`
+Run with: `uv run capture`
 
 ### Next Steps
 - Implement AI vision model integration to tell time from captured clock images and update OBS text interfaces
