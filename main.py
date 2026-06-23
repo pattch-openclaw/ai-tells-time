@@ -156,10 +156,10 @@ async def main_loop():
         # 2. Update OBS (if connected)
         if client:
             try:
-                # Update the 'text_gpt' source
-                new_text = f"Time: {current_time_str}"
-                client.set_input_settings("text_gpt", {"text": new_text}, True)
-                print(f"✅ OBS text_gpt updated to: '{new_text}'")
+                # Update the 'text_gemini' source with the provider's result
+                new_text = f"Gemini: {current_time_str}"
+                client.set_input_settings("text_gemini", {"text": new_text}, True)
+                print(f"✅ OBS text_gemini updated to: '{new_text}'")
             except Exception as e:
                 print(f"❌ Error updating OBS text: {e}")
 
