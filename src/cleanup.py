@@ -11,14 +11,18 @@ from pathlib import Path
 from src.capture import TEMP_DIR, OUTPUT_DIR
 
 def purge_directory(directory: Path) -> None:
-    """Deletes the directory and its contents."""
+    """Deletes the contents of the directory without deleting the directory itself."""
     if directory.exists() and directory.is_dir():
-        print(f"Cleaning up directory: {directory}")
+        print(f"Emptying directory: {directory}")
         try:
-            shutil.rmtree(directory)
-            print(f"✅ Successfully deleted {directory}")
+            for item in directory.iterdir():
+                if item.is_file() or item.is_symlink():
+                    item.unlink()
+                elif item.is_dir():
+                    shutil.rmtree(item)
+            print(f"✅ Successfully emptied {directory}")
         except Exception as e:
-            print(f"❌ Error deleting {directory}: {e}")
+            print(f"❌ Error emptying {directory}: {e}")
     else:
         print(f"Directory does not exist, skipping: {directory}")
 
