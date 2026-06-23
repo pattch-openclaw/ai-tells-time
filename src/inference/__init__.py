@@ -8,6 +8,7 @@ across providers and parsing structured output.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
+import os
 
 
 class BaseInferenceProvider(ABC):
@@ -183,8 +184,16 @@ class GeminiProvider(BaseInferenceProvider):
     def client(self):
         if self._client is None:
             from google import genai
-            # Automatically picks up GEMINI_API_KEY from environment
-            self._client = genai.Client()
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError("GEMINI_API_KEY not found in environment variables")
+            # Validate key format (should start with AIza)
+            if not api_key.startswith("AIza"):
+                print(f"⚠️  GEMINI_API_KEY does not appear to be a valid API key format")
+                print(f"   Expected format: AIza... (starts with 'AIza')")
+                print(f"   Current value: {api_key[:10]}... (truncated)")
+                raise ValueError("Invalid GEMINI_API_KEY format")
+            self._client = genai.Client(api_key=api_key)
         return self._client
     
     async def tell_time(self, image_path: Path) -> str:
