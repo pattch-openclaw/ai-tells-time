@@ -5,7 +5,9 @@ description = "Live stream where AI vision models tell time from analog clock im
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "google-genai>=2.9.0",
     "obsws-python>=1.8.0",
+    "pydantic>=2.13.4",
     "python-dotenv>=1.0.0",
 ]
 
