@@ -96,9 +96,12 @@ OBS_WEBSOCKET_PASSWORD=your_obs_password_here
 GEMINI_API_KEY=your-gemini-api-key-here  # Required for Gemini provider
 # OPENAI_API_KEY=***  # Optional, for future OpenAI provider
 # ANTHROPIC_API_KEY=***  # Optional, for future Claude provider
+# OLLAMA_MODEL=qwen2.5vl:7b  # Optional, default model for Ollama
 ```
 
-For testing without API keys, only the OBS variables are required. Gemini integration requires a valid API key starting with `AIza...`.
+For testing without API keys, only the OBS variables are required. Gemini integration requires a valid API key starting with `AIza...`. Ollama runs locally with no API key needed. Use `OLLAMA_MODEL` environment variable to specify a different local model (default: `qwen2.5vl:7b`).
+
+**Default Behavior:** When running `uv run python main.py` without arguments, ALL implemented providers are run by default (currently: Gemini + Ollama). This ensures the system works end-to-end with multiple AI models. Use the `--providers` flag to run specific providers only.
 
 ## Deployment Architecture
 
@@ -142,18 +145,27 @@ The Gemini API integration is now fully functional:
 1. Get a server API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
    - The key must start with `AIza...` (not `gen-lang-client-...`)
 2. Add to your `.env` file: `GEMINI_API_KEY=your-key-here`
-3. Run with: `uv run python main.py`
+3. Run with: `uv run python main.py` (runs all providers by default)
 
-**Provider Selection:**
+## Default Behavior
+
+When running `uv run python main.py` without any arguments, ALL implemented providers are run by default. This ensures the system works end-to-end with multiple AI models.
+
+Currently, this means both **Gemini** and **Ollama** providers run simultaneously. Use the `--providers` flag to run specific providers only.
+
+**Provider Selection:****
 ```bash
-# Default: run all implemented providers (currently just gemini)
+# Default: run all implemented providers (gemini + ollama)
 uv run python main.py
 
 # Run only gemini
 uv run python main.py --providers gemini
 
-# Run multiple providers (when implemented)
-uv run python main.py --providers gemini openai
+# Run only ollama
+uv run python main.py --providers ollama
+
+# Run multiple providers
+uv run python main.py --providers gemini ollama
 ```
 
 ### ✅ Image Capture Pipeline (v2 - Updated)

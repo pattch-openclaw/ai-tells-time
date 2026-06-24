@@ -26,7 +26,7 @@ OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
 CAPTURE_RESOLUTION = (854, 480)  # (width, height)
 
 # Available providers (all implemented providers)
-ALL_PROVIDERS = ["gemini"]  # Future: ["gemini", "openai", "claude", "ollama"]
+ALL_PROVIDERS = ["gemini", "ollama"]  # Future: ["gemini", "openai", "claude", "ollama"]
 
 
 def ensure_ollama_running():
@@ -62,7 +62,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         nargs="*",
         default=None,
-        help="List of providers to enable. Options: gemini, openai, claude, ollama. Defaults to all implemented."
+        help="List of providers to enable. Options: gemini, ollama. Defaults to all implemented (gemini + ollama)."
     )
     
     # Ollama model selection
