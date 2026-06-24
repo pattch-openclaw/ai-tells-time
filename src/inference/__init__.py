@@ -249,7 +249,7 @@ class ClaudeProvider(BaseInferenceProvider):
 class OllamaProvider(BaseInferenceProvider):
     """Local Ollama provider for time inference."""
     
-    def __init__(self, model: str = "llava:7b"):
+    def __init__(self, model: str = "qwen2.5vl:7b"):
         super().__init__("ollama")
         self.model = model
         self.base_url = "http://localhost:11434"
@@ -292,7 +292,7 @@ class OllamaProvider(BaseInferenceProvider):
         return attempt < 3
 
 
-def get_provider(provider_name: str) -> BaseInferenceProvider:
+def get_provider(provider_name: str, **kwargs) -> BaseInferenceProvider:
     """
     Factory function to get an inference provider by name.
     
@@ -316,4 +316,4 @@ def get_provider(provider_name: str) -> BaseInferenceProvider:
     if not provider_class:
         raise ValueError(f"Unknown provider: {provider_name}. Available: {list(providers.keys())}")
     
-    return provider_class()
+    return provider_class(**kwargs)

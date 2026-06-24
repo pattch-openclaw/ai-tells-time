@@ -49,6 +49,14 @@ def parse_args() -> argparse.Namespace:
         help="List of providers to enable. Options: gemini, openai, claude, ollama. Defaults to all implemented."
     )
     
+    # Ollama model selection
+    parser.add_argument(
+        "--ollama-model",
+        type=str,
+        default="qwen2.5vl:7b",
+        help="Ollama model to use (default: qwen2.5vl:7b)"
+    )
+    
     args = parser.parse_args()
     
     # If no providers specified, use all implemented
@@ -103,9 +111,14 @@ async def main_loop():
     
     for provider_name in providers_to_use:
         try:
-            provider = get_provider(provider_name)
+            if provider_name == "ollama":
+                provider = get_provider(provider_name, model=args.ollama_model)
+            else:
+                provider = get_provider(provider_name)
             providers.append(provider)
             print(f"✅ Initialized AI provider: {provider.name}")
+            if provider_name == "ollama":
+                print(f"   Using model: {args.ollama_model}")
         except Exception as e:
             print(f"❌ Failed to initialize AI provider {provider_name}: {e}")
             
