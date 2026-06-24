@@ -28,6 +28,22 @@ CAPTURE_RESOLUTION = (854, 480)  # (width, height)
 # Available providers (all implemented providers)
 ALL_PROVIDERS = ["gemini"]  # Future: ["gemini", "openai", "claude", "ollama"]
 
+
+def ensure_ollama_running():
+    """Ensure Ollama server is running before starting the app."""
+    try:
+        import subprocess
+        result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
+        if result.returncode != 0:
+            print("⚠️  Ollama appears to not be running. Please start Ollama with: ollama serve &")
+        else:
+            print("✅ Ollama is running")
+    except FileNotFoundError:
+        print("⚠️  Ollama not found in PATH. Install with: curl -fsSL https://ollama.com/install.sh | sh")
+    except Exception as e:
+        print(f"⚠️  Could not check Ollama status: {e}")
+
+
 # Debug: print loaded values (password hidden)
 print(f"Config loaded from {config_path}:")
 print(f"  HOST: {OBS_HOST}")
@@ -102,6 +118,11 @@ async def main_loop():
     
     # Parse command line arguments for provider selection
     args = parse_args()
+    
+    # Check Ollama status if ollama provider is enabled
+    providers_to_check = args.providers if args.providers else ALL_PROVIDERS
+    if "ollama" in providers_to_check:
+        ensure_ollama_running()
     
     # Initialize AI Providers
     providers = []
