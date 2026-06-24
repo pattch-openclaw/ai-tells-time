@@ -163,7 +163,8 @@ async def main_loop():
                 model_str = getattr(provider, "model_name", getattr(provider, "model", "Unknown"))
                 # Capitalize provider name (or use custom formatting if preferred)
                 provider_display = provider.name.title().replace("Openai", "OpenAI")
-                details_text += f"- {provider_display}: {model_str}\n"
+                spacing = "  " if provider.name == "local" else " "
+                details_text += f"{provider_display}:{spacing}{model_str}\n"
                 
             try:
                 client.set_input_settings("text_details", {"text": details_text.strip()}, True)
@@ -193,7 +194,8 @@ async def main_loop():
                 for provider in providers:
                     # Use text_gpt for openai, text_{provider} for others
                     obs_source = "text_gpt" if provider.name == "openai" else f"text_{provider.name}"
-                    obs_text = f"{provider.name.upper()}: ..."
+                    spacing = "  " if provider.name == "local" else " "
+                    obs_text = f"{provider.name.upper()}:{spacing}..."
                     try:
                         client.set_input_settings(obs_source, {"text": obs_text}, True)
                         print(f"🔄 OBS {obs_source} set to: '{obs_text}'")
@@ -208,7 +210,8 @@ async def main_loop():
                     results.append((provider_name, time_result))
                     # Use text_gpt for openai, text_{provider} for others
                     obs_source = "text_gpt" if provider_name == "openai" else f"text_{provider_name}"
-                    obs_text = f"{provider_name.upper()}: {time_result}"
+                    spacing = "  " if provider_name == "local" else " "
+                    obs_text = f"{provider_name.upper()}:{spacing}{time_result}"
                     try:
                         client.set_input_settings(obs_source, {"text": obs_text}, True)
                         print(f"✅ OBS {obs_source} updated to: '{obs_text}'")
@@ -230,8 +233,9 @@ async def main_loop():
         if client and results:
             primary_provider, time_result = results[0]
             obs_source = "text_gpt" if primary_provider == "openai" else f"text_{primary_provider}"
+            spacing = "  " if primary_provider == "local" else " "
             try:
-                obs_text = f"{primary_provider.upper()}: {time_result}"
+                obs_text = f"{primary_provider.upper()}:{spacing}{time_result}"
                 client.set_input_settings(obs_source, {"text": obs_text}, True)
                 print(f"✅ OBS {obs_source} updated to: '{obs_text}'")
             except Exception as e:
