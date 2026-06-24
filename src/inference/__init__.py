@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 import os
+from pydantic import BaseModel
 
 
 class BaseInferenceProvider(ABC):
@@ -144,33 +145,66 @@ def truncate_output(text: str, max_length: int = 50) -> str:
     return text[:max_length] + "..."
 
 
-# Placeholder provider implementations (to be filled in later)
+# Shared output schema
+class TimeResponse(BaseModel):
+    """Structured output schema for the AI to conform to."""
+    time_hh_mm: str
+
 
 class OpenAIProvider(BaseInferenceProvider):
     """OpenAI GPT-4o-mini provider for time inference."""
     
-    def __init__(self):
+    def __init__(self, model_name: str = "gpt-4o-mini"):
         super().__init__("openai")
-        # TODO: Implement API key loading and client setup
+        self.model_name = model_name
+        self._client = None
+        
+    @property
+    def client(self):
+        if self._client is None:
+            import openai
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY not found in environment variables")
+            self._client = openai.AsyncClient(api_key=api_key)
+        return self._client
     
     async def tell_time(self, image_path: Path) -> str:
-        # TODO: Implement OpenAI API call
-        return "OpenAI provider not yet implemented"
+        import base64
+        
+        # Encode image to base64
+        image_bytes = image_path.read_bytes()
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        
+        prompt = format_prompt("default")
+        
+        response = await self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{image_b64}"
+                            },
+                        },
+                    ],
+                }
+            ],
+            max_tokens=300,
+        )
+        return response.choices[0].message.content or ""
     
     async def parse_response(self, raw_response: str) -> Optional[str]:
-        # TODO: Implement response parsing
         return extract_time_from_text(raw_response)
     
     async def handle_error(self, error: Exception, attempt: int) -> bool:
-        # TODO: Implement error handling
+        print(f"OpenAI API Error (Attempt {attempt}): {error}")
         return attempt < 3
 
-
-from pydantic import BaseModel
-
-class TimeResponse(BaseModel):
-    """Structured output schema for the AI to conform to."""
-    time_hh_mm: str
 
 class GeminiProvider(BaseInferenceProvider):
     """Google Gemini provider for time inference using Structured Outputs."""
@@ -298,6 +332,7 @@ def get_provider(provider_name: str, **kwargs) -> BaseInferenceProvider:
     
     Args:
         provider_name: Name of the provider (openai, gemini, claude, ollama)
+        **kwargs: Additional arguments to pass to the provider constructor
         
     Returns:
         Configured provider instance
