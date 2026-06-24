@@ -58,6 +58,16 @@ class BaseInferenceProvider(ABC):
         """
         pass
 
+    def get_time_string(self, time_result: str) -> str:
+        """Format the time string for OBS output."""
+        return f"{self.name.upper()}: {time_result}"
+
+    def get_model_detail_string(self) -> str:
+        """Format the model detail string for OBS output."""
+        provider_display = self.name.title().replace("Openai", "OpenAI")
+        model_str = getattr(self, "model_name", getattr(self, "model", "Unknown"))
+        return f"{provider_display}: {model_str}"
+
 
 # Shared prompt templates
 PROMPT_TEMPLATES = {
@@ -324,6 +334,18 @@ class LocalProvider(BaseInferenceProvider):
         super().__init__("local")
         self.model = model
         self.base_url = "http://localhost:11434"
+
+    def get_time_string(self, time_result: str) -> str:
+        # Note: We use two spaces after the colon to align the 5-character "LOCAL" 
+        # label with the 6-character provider names (GEMINI, OPENAI, CLAUDE) in monospace fonts.
+        return f"{self.name.upper()}:  {time_result}"
+
+    def get_model_detail_string(self) -> str:
+        provider_display = self.name.title()
+        model_str = getattr(self, "model_name", getattr(self, "model", "Unknown"))
+        # Note: We use two spaces after the colon to align the 5-character "Local" 
+        # label with the 6-character provider names (Gemini, OpenAI, Claude) in monospace fonts.
+        return f"{provider_display}:  {model_str}"
     
     async def tell_time(self, image_path: Path) -> str:
         import base64
