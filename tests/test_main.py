@@ -15,26 +15,19 @@ class TestMainLoop:
     """Tests for the main broadcast loop."""
 
     @pytest.mark.asyncio
+    async def test_main_imports_successfully(self):
+        """Regression test to ensure main.py can be imported without NameError."""
+        try:
+            import main
+            assert True
+        except NameError as e:
+            pytest.fail(f"NameError when importing main: {e}")
+
+    @pytest.mark.asyncio
     async def test_main_loop_uses_configured_resolution(self):
         """Main loop uses configured resolution."""
-        with patch("main.OUTPUT_DIR", Path("/tmp/test")):
-            # Need to import after patching
-            from main import CAPTURE_RESOLUTION
-            assert CAPTURE_RESOLUTION == (854, 480)
-
-    @pytest.mark.asyncio
-    async def test_main_loop_uses_configured_output_dir(self):
-        """Main loop uses configured output directory."""
-        expected_dir = Path.home() / "Coding" / "ai-tells-time-output"
-        with patch("main.OUTPUT_DIR", expected_dir):
-            from main import OUTPUT_DIR
-            assert OUTPUT_DIR == expected_dir
-
-    @pytest.mark.asyncio
-    async def test_main_loop_has_capture_function(self):
-        """Main loop has capture_image function."""
         import main
-        assert hasattr(main, "capture_image")
+        assert main.CAPTURE_RESOLUTION == (854, 480)
 
     @pytest.mark.asyncio
     async def test_main_loop_has_main_loop_function(self):
@@ -44,10 +37,10 @@ class TestMainLoop:
 
 
 class TestCaptureImage:
-    """Tests for the capture_image helper function."""
+    """Tests for the capture_clock_image helper function."""
 
     @pytest.mark.asyncio
     async def test_capture_image_imports_ok(self):
         """Capture image function can be imported."""
-        from main import capture_image
-        assert capture_image is not None
+        from src.capture import capture_clock_image
+        assert capture_clock_image is not None

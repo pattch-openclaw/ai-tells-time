@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from src.capture import capture_clock_image
-from src.inference import get_provider
+from src.inference import get_provider, BaseInferenceProvider
 
 # Load environment variables from ~/.config/ai-tells-time/.env (secure location)
 config_path = Path.home() / ".config" / "ai-tells-time" / ".env"
@@ -95,7 +95,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-async def run_inference_for_provider(provider, image_path: Path) -> tuple[Any, str]:
+async def run_inference_for_provider(provider: BaseInferenceProvider, image_path: Path) -> tuple[BaseInferenceProvider, str]:
     """Run inference for a single provider and return (provider, time_str)."""
     try:
         print(f"Asking {provider.name} for the time...")
