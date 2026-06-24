@@ -172,14 +172,31 @@ async def main_loop():
             
             # Run all AI providers concurrently
             if providers:
+                # First, update OBS with "Provider: ..." before waiting for responses
+                for provider in providers:
+                    obs_text = f"{provider.name.upper()}: ..."
+                    try:
+                        client.set_input_settings(f"text_{provider.name}", {"text": obs_text}, True)
+                        print(f"🔄 OBS text_{provider.name} set to: '{obs_text}'")
+                    except Exception as e:
+                        print(f"⚠️ Could not update OBS text_{provider.name}: {e}")
+                
+                # Now wait for all provider responses
                 tasks = [run_inference_for_provider(p, image_path) for p in providers]
                 results = await asyncio.gather(*tasks)
                 
-                # For now, just use the first provider's result (Gemini)
-                # In the future, this is where we'd update multiple OBS text sources
+                # Update OBS with final results
                 for provider_name, time_result in results:
-                    current_time_str = time_result
-                    break # Just grab the first one to update the single OBS text source
+                    obs_text = f"{provider_name.upper()}: {time_result}"
+                    try:
+                        client.set_input_settings(f"text_{provider_name}", {"text": obs_text}, True)
+                        print(f"✅ OBS text_{provider_name} updated to: '{obs_text}'")
+                    except Exception as e:
+                        print(f"❌ Error updating OBS text_{provider_name}: {e}")
+                
+                # Use the first provider's result as the primary time
+                if results:
+                    current_time_str = results[0][1]
                     
         except Exception as e:
             print(f"❌ Error capturing image or running inference: {e}")
@@ -187,15 +204,15 @@ async def main_loop():
             # Continue anyway if capture fails
             pass
         
-        # 2. Update OBS (if connected)
-        if client:
+        # 2. Update primary provider's OBS source (if connected)
+        if client and providers and results:
+            primary_provider = results[0][0]
             try:
-                # Update the 'text_gemini' source with the provider's result
-                new_text = f"Gemini: {current_time_str}"
-                client.set_input_settings("text_gemini", {"text": new_text}, True)
-                print(f"✅ OBS text_gemini updated to: '{new_text}'")
+                obs_text = f"{primary_provider.upper()}: {current_time_str}"
+                client.set_input_settings(f"text_{primary_provider}", {"text": obs_text}, True)
+                print(f"✅ OBS text_{primary_provider} updated to: '{obs_text}'")
             except Exception as e:
-                print(f"❌ Error updating OBS text: {e}")
+                print(f"❌ Error updating OBS text_{primary_provider}: {e}")
 
         # 3. Calculate sleep time to align exactly with the top of the next minute
         current_seconds = time.time() % 60
