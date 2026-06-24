@@ -263,7 +263,7 @@ class GeminiProvider(BaseInferenceProvider):
 class ClaudeProvider(BaseInferenceProvider):
     """Anthropic Claude provider for time inference."""
     
-    def __init__(self, model_name: str = "claude-3-5-haiku-20241022"):
+    def __init__(self, model_name: str = "claude-haiku-4-5"):
         super().__init__("claude")
         self.model_name = model_name
         self._client = None
@@ -317,11 +317,11 @@ class ClaudeProvider(BaseInferenceProvider):
         return attempt < 3
 
 
-class OllamaProvider(BaseInferenceProvider):
-    """Local Ollama provider for time inference."""
+class LocalProvider(BaseInferenceProvider):
+    """Local provider for time inference (via Ollama)."""
     
     def __init__(self, model: str = "qwen2.5vl:7b"):
-        super().__init__("ollama")
+        super().__init__("local")
         self.model = model
         self.base_url = "http://localhost:11434"
     
@@ -368,7 +368,7 @@ def get_provider(provider_name: str, **kwargs) -> BaseInferenceProvider:
     Factory function to get an inference provider by name.
     
     Args:
-        provider_name: Name of the provider (openai, gemini, claude, ollama)
+        provider_name: Name of the provider (openai, gemini, claude, local)
         **kwargs: Additional arguments to pass to the provider constructor
         
     Returns:
@@ -381,7 +381,7 @@ def get_provider(provider_name: str, **kwargs) -> BaseInferenceProvider:
         "openai": OpenAIProvider,
         "gemini": GeminiProvider,
         "claude": ClaudeProvider,
-        "ollama": OllamaProvider,
+        "local": LocalProvider,
     }
     
     provider_class = providers.get(provider_name.lower())

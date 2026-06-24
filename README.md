@@ -16,20 +16,20 @@ A key design philosophy of this project is that **AI hallucinations are a featur
 
 ### 1. Orchestration
 *   **Language:** Python using `asyncio` to manage concurrent API calls and enforce strict timeouts (e.g., fast-failing local models after 20 seconds to keep the 1-minute loop alive).
-*   **Environment & Dependency Management:** `uv` with a standard `pyproject.toml` configuration. This provides blazingly fast resolution and isolated environments without the heavy system footprint of Conda, perfect for an API/Ollama-driven application.
+*   **Environment & Dependency Management:** `uv` with a standard `pyproject.toml` configuration. This provides blazingly fast resolution and isolated environments without the heavy system footprint of Conda, perfect for an API/Local-driven application.
 
 ### 2. Broadcasting & Compositing
 *   **Software:** OBS Studio with the `obs-websocket` feature enabled (built into modern OBS).
 *   **Python Integration:** `obsws-python` library to allow our script to remotely control OBS (update text sources, trigger TTS audio, swap clock images).
 *   **Configuration Management:** OBS "Scene Collections" will be exported as JSON files and tracked in this repository under `obs-assets/` alongside any static stream overlays. Connection credentials (host, port, password) are managed via `~/.config/ai-tells-time/.env` on the Mac Mini.
-*   **Simulcasting:** Restream.io vs local OBS Multistream plugin (Aitum).
+*   **Simulcasting:** Direct broadcast to both Twitch and YouTube from OBS using a local multistream plugin (e.g., Aitum Multiple Outputs plugin). Restream.io is explicitly excluded to keep operations free and avoid monthly fees.
 *   **Status:** ✅ OBS WebSocket connection is working. The script successfully connects to OBS and updates text sources. Gemini API integration is fully implemented and working end-to-end.
 
 ### 3. Vision Models
 Need to balance cost vs "personality". Since hallucinations are desired, cheaper or smaller models might actually be *better*.
-*   **Local/Free:** `ollama` running lightweight vision models (like `moondream`, `llava:7b`, or `llama3.2-vision:11b`). These will run efficiently on the target M4 Mac Mini utilizing Apple Silicon's unified memory, acting as our chaotic baseline.
-*   **API (Cheap/Free tiers):** `gemini-2.5-flash` (currently implemented), `gpt-4o-mini`, `claude-3-haiku`. 
-*   **Status:** ✅ Gemini provider is fully implemented and tested. Additional providers (OpenAI, Claude, Ollama) can be added by implementing the `BaseInferenceProvider` interface.
+*   **Local/Free:** `local` provider running lightweight vision models (like `moondream`, `llava:7b`, or `llama3.2-vision:11b`). These will run efficiently on the target M4 Mac Mini utilizing Apple Silicon's unified memory, acting as our chaotic baseline.
+*   **API (Cheap/Free tiers):** `gemini-2.5-flash`, `gpt-4o-mini`, `claude-haiku-4-5`.
+*   **Status:** ✅ Basic integrations are fully implemented for Gemini, Claude, and OpenAI, as well as locally running models.
 
 ### 4. Text-to-Speech (TTS)
 *   Needs to be free/cheap given the 1-minute interval (1,440 requests/day).
@@ -96,12 +96,12 @@ OBS_WEBSOCKET_PASSWORD=your_obs_password_here
 GEMINI_API_KEY=your-gemini-api-key-here  # Required for Gemini provider
 # OPENAI_API_KEY=***  # Optional, for future OpenAI provider
 # ANTHROPIC_API_KEY=***  # Optional, for future Claude provider
-# OLLAMA_MODEL=qwen2.5vl:7b  # Optional, default model for Ollama
+# LOCAL_MODEL=qwen2.5vl:7b  # Optional, default model for Local
 ```
 
-For testing without API keys, only the OBS variables are required. Gemini integration requires a valid API key starting with `AIza...`. Ollama runs locally with no API key needed. Use `OLLAMA_MODEL` environment variable to specify a different local model (default: `qwen2.5vl:7b`).
+For testing without API keys, only the OBS variables are required. Gemini integration requires a valid API key starting with `AIza...`. The local provider runs locally with no API key needed. Use `LOCAL_MODEL` environment variable to specify a different local model (default: `qwen2.5vl:7b`).
 
-**Default Behavior:** When running `uv run main.py` without arguments, ALL implemented providers are run by default (currently: Gemini + Ollama). This ensures the system works end-to-end with multiple AI models. Use the `--providers` flag to run specific providers only.
+**Default Behavior:** When running `uv run main.py` without arguments, ALL implemented providers are run by default (currently: Gemini + Local). This ensures the system works end-to-end with multiple AI models. Use the `--providers` flag to run specific providers only.
 
 ## Deployment Architecture
 
@@ -151,21 +151,21 @@ The Gemini API integration is now fully functional:
 
 When running `uv run main.py` without any arguments, ALL implemented providers are run by default. This ensures the system works end-to-end with multiple AI models.
 
-Currently, this means both **Gemini** and **Ollama** providers run simultaneously. Use the `--providers` flag to run specific providers only.
+Currently, this means both **Gemini** and **Local** providers run simultaneously. Use the `--providers` flag to run specific providers only.
 
 **Provider Selection:****
 ```bash
-# Default: run all implemented providers (gemini + ollama)
+# Default: run all implemented providers (gemini + local)
 uv run main.py
 
 # Run only gemini
 uv run main.py --providers gemini
 
-# Run only ollama
-uv run main.py --providers ollama
+# Run only local
+uv run main.py --providers local
 
 # Run multiple providers
-uv run main.py --providers gemini ollama
+uv run main.py --providers gemini local
 ```
 
 ### ✅ Image Capture Pipeline (v2 - Updated)
@@ -204,7 +204,7 @@ The OBS WebSocket connection and image capture are fully functional:
 - ✅ Updates text sources in OBS scenes (via `main.py`)
 - ✅ Captures clock images using `save_source_screenshot` (via `capture`)
   - Images saved to configurable location (default: temp directory)
-- ❌ AI API integration (OpenAI, Anthropic, Gemini) - not yet implemented
+- ✅ AI API integration (OpenAI, Anthropic, Gemini) - implemented
 - ❌ Text-to-Speech (TTS) - not yet implemented
 
 ### Image Capture Workflow (Verified)
@@ -224,8 +224,7 @@ The capture script successfully:
 Run with: `uv run capture`
 
 ### Next Steps
-- Implement additional AI vision model providers (OpenAI, Claude, Ollama)
-- Configure simulcasting to Twitch/YouTube
+- Configure direct OBS simulcasting to Twitch and YouTube via a local plugin (avoiding paid services like Restream)
 - (Lower Priority) Add TTS for audio responses
 
 ## Development Practices
