@@ -336,11 +336,15 @@ class LocalProvider(BaseInferenceProvider):
         self.base_url = "http://localhost:11434"
 
     def get_time_string(self, time_result: str) -> str:
+        # Note: We use two spaces after the colon to align the 5-character "LOCAL" 
+        # label with the 6-character provider names (GEMINI, OPENAI, CLAUDE) in monospace fonts.
         return f"{self.name.upper()}:  {time_result}"
 
     def get_model_detail_string(self) -> str:
         provider_display = self.name.title()
         model_str = getattr(self, "model_name", getattr(self, "model", "Unknown"))
+        # Note: We use two spaces after the colon to align the 5-character "Local" 
+        # label with the 6-character provider names (Gemini, OpenAI, Claude) in monospace fonts.
         return f"{provider_display}:  {model_str}"
     
     async def tell_time(self, image_path: Path) -> str:
