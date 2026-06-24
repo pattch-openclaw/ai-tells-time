@@ -26,10 +26,10 @@ OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
 CAPTURE_RESOLUTION = (854, 480)  # (width, height)
 
 # Available providers (all implemented providers)
-ALL_PROVIDERS = ["gemini", "ollama", "openai", "claude"]
+ALL_PROVIDERS = ["gemini", "local", "openai", "claude"]
 
 
-def ensure_ollama_running():
+def ensure_local_running():
     """Ensure Ollama server is running before starting the app."""
     try:
         import subprocess
@@ -62,15 +62,15 @@ def parse_args() -> argparse.Namespace:
         type=str,
         nargs="*",
         default=None,
-        help="List of providers to enable. Options: gemini, ollama, openai, claude. Defaults to all implemented (gemini + ollama + openai + claude)."
+        help="List of providers to enable. Options: gemini, local, openai, claude. Defaults to all implemented (gemini + local + openai + claude)."
     )
 
-    # Ollama model selection
+    # Local model selection
     parser.add_argument(
-        "--ollama-model",
+        "--local-model",
         type=str,
         default="qwen2.5vl:7b",
-        help="Ollama model to use (default: qwen2.5vl:7b)"
+        help="Local model to use (default: qwen2.5vl:7b)"
     )
 
     args = parser.parse_args()
@@ -80,7 +80,7 @@ def parse_args() -> argparse.Namespace:
         return args
 
     # Validate and filter providers
-    valid_providers = {"gemini", "ollama", "openai", "claude"}
+    valid_providers = {"gemini", "local", "openai", "claude"}
     selected = set(p.lower() for p in args.providers)
     invalid = selected - valid_providers
 
@@ -119,10 +119,10 @@ async def main_loop():
     # Parse command line arguments for provider selection
     args = parse_args()
 
-    # Check Ollama status if ollama provider is enabled
+    # Check Local status if local provider is enabled
     providers_to_check = args.providers if args.providers else ALL_PROVIDERS
-    if "ollama" in providers_to_check:
-        ensure_ollama_running()
+    if "local" in providers_to_check:
+        ensure_local_running()
 
     # Initialize AI Providers
     providers = []
@@ -132,14 +132,14 @@ async def main_loop():
 
     for provider_name in providers_to_use:
         try:
-            if provider_name == "ollama":
-                provider = get_provider(provider_name, model=args.ollama_model)
+            if provider_name == "local":
+                provider = get_provider(provider_name, model=args.local_model)
             else:
                 provider = get_provider(provider_name)
             providers.append(provider)
             print(f"✅ Initialized AI provider: {provider.name}")
-            if provider_name == "ollama":
-                print(f"   Using model: {args.ollama_model}")
+            if provider_name == "local":
+                print(f"   Using model: {args.local_model}")
         except Exception as e:
             print(f"❌ Failed to initialize AI provider {provider_name}: {e}")
 
@@ -174,8 +174,8 @@ async def main_loop():
             if providers:
                 # First, update OBS with "Provider: ..." for all providers
                 for provider in providers:
-                    # Use text_gpt for openai/claude, text_{provider} for others
-                    obs_source = "text_gpt" if provider.name in ("openai", "claude") else f"text_{provider.name}"
+                    # Use text_gpt for openai, text_{provider} for others
+                    obs_source = "text_gpt" if provider.name == "openai" else f"text_{provider.name}"
                     obs_text = f"{provider.name.upper()}: ..."
                     try:
                         client.set_input_settings(obs_source, {"text": obs_text}, True)
@@ -189,8 +189,8 @@ async def main_loop():
                 for completed_task in asyncio.as_completed(tasks):
                     provider_name, time_result = await completed_task
                     results.append((provider_name, time_result))
-                    # Use text_gpt for openai/claude, text_{provider} for others
-                    obs_source = "text_gpt" if provider_name in ("openai", "claude") else f"text_{provider_name}"
+                    # Use text_gpt for openai, text_{provider} for others
+                    obs_source = "text_gpt" if provider_name == "openai" else f"text_{provider_name}"
                     obs_text = f"{provider_name.upper()}: {time_result}"
                     try:
                         client.set_input_settings(obs_source, {"text": obs_text}, True)
@@ -212,7 +212,7 @@ async def main_loop():
         # 2. Update primary provider's OBS source (if connected)
         if client and results:
             primary_provider, time_result = results[0]
-            obs_source = "text_gpt" if primary_provider in ("openai", "claude") else f"text_{primary_provider}"
+            obs_source = "text_gpt" if primary_provider == "openai" else f"text_{primary_provider}"
             try:
                 obs_text = f"{primary_provider.upper()}: {time_result}"
                 client.set_input_settings(obs_source, {"text": obs_text}, True)
