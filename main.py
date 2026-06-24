@@ -170,9 +170,9 @@ async def main_loop():
             image_path = await capture_clock_image(resolution=CAPTURE_RESOLUTION)
             print(f"Image saved to: {image_path}")
             
-            # Run all AI providers concurrently
+            # Run all AI providers concurrently, updating OBS as each completes
             if providers:
-                # First, update OBS with "Provider: ..." before waiting for responses
+                # First, update OBS with "Provider: ..." for all providers
                 for provider in providers:
                     obs_text = f"{provider.name.upper()}: ..."
                     try:
@@ -181,12 +181,10 @@ async def main_loop():
                     except Exception as e:
                         print(f"⚠️ Could not update OBS text_{provider.name}: {e}")
                 
-                # Now wait for all provider responses
+                # Run inference tasks concurrently, update OBS as each completes
                 tasks = [run_inference_for_provider(p, image_path) for p in providers]
-                results = await asyncio.gather(*tasks)
-                
-                # Update OBS with final results
-                for provider_name, time_result in results:
+                for completed_task in asyncio.as_completed(tasks):
+                    provider_name, time_result = await completed_task
                     obs_text = f"{provider_name.upper()}: {time_result}"
                     try:
                         client.set_input_settings(f"text_{provider_name}", {"text": obs_text}, True)
@@ -194,9 +192,8 @@ async def main_loop():
                     except Exception as e:
                         print(f"❌ Error updating OBS text_{provider_name}: {e}")
                 
-                # Use the first provider's result as the primary time
-                if results:
-                    current_time_str = results[0][1]
+                # Use the first result as primary time
+                current_time_str = time_result
                     
         except Exception as e:
             print(f"❌ Error capturing image or running inference: {e}")
