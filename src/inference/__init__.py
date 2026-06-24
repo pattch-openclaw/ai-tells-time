@@ -263,20 +263,57 @@ class GeminiProvider(BaseInferenceProvider):
 class ClaudeProvider(BaseInferenceProvider):
     """Anthropic Claude provider for time inference."""
     
-    def __init__(self):
+    def __init__(self, model_name: str = "claude-3-5-haiku-20241022"):
         super().__init__("claude")
-        # TODO: Implement API key loading and client setup
+        self.model_name = model_name
+        self._client = None
+        
+    @property
+    def client(self):
+        if self._client is None:
+            import anthropic
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
+            self._client = anthropic.AsyncClient(api_key=api_key)
+        return self._client
     
     async def tell_time(self, image_path: Path) -> str:
-        # TODO: Implement Claude API call
-        return "Claude provider not yet implemented"
+        import base64
+        
+        # Encode image to base64
+        image_bytes = image_path.read_bytes()
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        
+        prompt = format_prompt("default")
+        
+        response = await self.client.messages.create(
+            model=self.model_name,
+            max_tokens=300,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/png",
+                                "data": image_b64,
+                            },
+                        },
+                    ],
+                }
+            ],
+        )
+        return response.content[0].text if response.content else ""
     
     async def parse_response(self, raw_response: str) -> Optional[str]:
-        # TODO: Implement response parsing
         return extract_time_from_text(raw_response)
     
     async def handle_error(self, error: Exception, attempt: int) -> bool:
-        # TODO: Implement error handling
+        print(f"Claude API Error (Attempt {attempt}): {error}")
         return attempt < 3
 
 
