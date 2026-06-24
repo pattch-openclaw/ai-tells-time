@@ -174,26 +174,34 @@ async def main_loop():
             if providers:
                 # First, update OBS with "Provider: ..." for all providers
                 for provider in providers:
+                    # Use text_gpt for openai, text_{provider} for others
+                    obs_source = "text_gpt" if provider.name == "openai" else f"text_{provider.name}"
                     obs_text = f"{provider.name.upper()}: ..."
                     try:
-                        client.set_input_settings(f"text_{provider.name}", {"text": obs_text}, True)
-                        print(f"🔄 OBS text_{provider.name} set to: '{obs_text}'")
+                        client.set_input_settings(obs_source, {"text": obs_text}, True)
+                        print(f"🔄 OBS {obs_source} set to: '{obs_text}'")
                     except Exception as e:
-                        print(f"⚠️ Could not update OBS text_{provider.name}: {e}")
+                        print(f"⚠️ Could not update OBS {obs_source}: {e}")
                 
                 # Run inference tasks concurrently, update OBS as each completes
                 tasks = [run_inference_for_provider(p, image_path) for p in providers]
+                results = []
                 for completed_task in asyncio.as_completed(tasks):
                     provider_name, time_result = await completed_task
+                    results.append((provider_name, time_result))
+                    # Use text_gpt for openai, text_{provider} for others
+                    obs_source = "text_gpt" if provider_name == "openai" else f"text_{provider_name}"
                     obs_text = f"{provider_name.upper()}: {time_result}"
                     try:
-                        client.set_input_settings(f"text_{provider_name}", {"text": obs_text}, True)
-                        print(f"✅ OBS text_{provider_name} updated to: '{obs_text}'")
+                        client.set_input_settings(obs_source, {"text": obs_text}, True)
+                        print(f"✅ OBS {obs_source} updated to: '{obs_text}'")
                     except Exception as e:
-                        print(f"❌ Error updating OBS text_{provider_name}: {e}")
+                        print(f"❌ Error updating OBS {obs_source}: {e}")
                 
                 # Use the first result as primary time
-                current_time_str = time_result
+                if results:
+                    _, time_result = results[0]
+                    current_time_str = time_result
                     
         except Exception as e:
             print(f"❌ Error capturing image or running inference: {e}")
@@ -202,14 +210,15 @@ async def main_loop():
             pass
         
         # 2. Update primary provider's OBS source (if connected)
-        if client and providers and results:
-            primary_provider = results[0][0]
+        if client and results:
+            primary_provider, time_result = results[0]
+            obs_source = "text_gpt" if primary_provider == "openai" else f"text_{primary_provider}"
             try:
-                obs_text = f"{primary_provider.upper()}: {current_time_str}"
-                client.set_input_settings(f"text_{primary_provider}", {"text": obs_text}, True)
-                print(f"✅ OBS text_{primary_provider} updated to: '{obs_text}'")
+                obs_text = f"{primary_provider.upper()}: {time_result}"
+                client.set_input_settings(obs_source, {"text": obs_text}, True)
+                print(f"✅ OBS {obs_source} updated to: '{obs_text}'")
             except Exception as e:
-                print(f"❌ Error updating OBS text_{primary_provider}: {e}")
+                print(f"❌ Error updating OBS {obs_source}: {e}")
 
         # 3. Calculate sleep time to align exactly with the top of the next minute
         current_seconds = time.time() % 60
