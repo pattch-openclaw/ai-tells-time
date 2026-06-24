@@ -95,8 +95,8 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-async def run_inference_for_provider(provider, image_path: Path) -> tuple[str, str]:
-    """Run inference for a single provider and return (provider_name, time_str)."""
+async def run_inference_for_provider(provider, image_path: Path) -> tuple[Any, str]:
+    """Run inference for a single provider and return (provider, time_str)."""
     try:
         print(f"Asking {provider.name} for the time...")
         raw_response = await provider.tell_time(image_path)
@@ -104,13 +104,13 @@ async def run_inference_for_provider(provider, image_path: Path) -> tuple[str, s
 
         if parsed_time:
             print(f"🤖 {provider.name} thinks the time is: {parsed_time}")
-            return provider.name, parsed_time
+            return provider, parsed_time
         else:
             print(f"⚠️ Failed to parse {provider.name} response. Raw: {raw_response}")
-            return provider.name, "Error parsing time"
+            return provider, "Error parsing time"
     except Exception as e:
         print(f"❌ Error running inference for {provider.name}: {e}")
-        return provider.name, "Error"
+        return provider, "Error"
 
 
 async def main_loop():
@@ -159,12 +159,7 @@ async def main_loop():
         if providers:
             details_text = "Model Details:\n"
             for provider in providers:
-                # LocalProvider uses .model, others use .model_name
-                model_str = getattr(provider, "model_name", getattr(provider, "model", "Unknown"))
-                # Capitalize provider name (or use custom formatting if preferred)
-                provider_display = provider.name.title().replace("Openai", "OpenAI")
-                spacing = "  " if provider.name == "local" else " "
-                details_text += f"{provider_display}:{spacing}{model_str}\n"
+                details_text += f"{provider.get_model_detail_string()}\n"
                 
             try:
                 client.set_input_settings("text_details", {"text": details_text.strip()}, True)
@@ -194,8 +189,7 @@ async def main_loop():
                 for provider in providers:
                     # Use text_gpt for openai, text_{provider} for others
                     obs_source = "text_gpt" if provider.name == "openai" else f"text_{provider.name}"
-                    spacing = "  " if provider.name == "local" else " "
-                    obs_text = f"{provider.name.upper()}:{spacing}..."
+                    obs_text = provider.get_time_string("...")
                     try:
                         client.set_input_settings(obs_source, {"text": obs_text}, True)
                         print(f"🔄 OBS {obs_source} set to: '{obs_text}'")
@@ -206,12 +200,11 @@ async def main_loop():
                 tasks = [run_inference_for_provider(p, image_path) for p in providers]
                 results = []
                 for completed_task in asyncio.as_completed(tasks):
-                    provider_name, time_result = await completed_task
-                    results.append((provider_name, time_result))
+                    provider, time_result = await completed_task
+                    results.append((provider, time_result))
                     # Use text_gpt for openai, text_{provider} for others
-                    obs_source = "text_gpt" if provider_name == "openai" else f"text_{provider_name}"
-                    spacing = "  " if provider_name == "local" else " "
-                    obs_text = f"{provider_name.upper()}:{spacing}{time_result}"
+                    obs_source = "text_gpt" if provider.name == "openai" else f"text_{provider.name}"
+                    obs_text = provider.get_time_string(time_result)
                     try:
                         client.set_input_settings(obs_source, {"text": obs_text}, True)
                         print(f"✅ OBS {obs_source} updated to: '{obs_text}'")
@@ -232,10 +225,9 @@ async def main_loop():
         # 2. Update primary provider's OBS source (if connected)
         if client and results:
             primary_provider, time_result = results[0]
-            obs_source = "text_gpt" if primary_provider == "openai" else f"text_{primary_provider}"
-            spacing = "  " if primary_provider == "local" else " "
+            obs_source = "text_gpt" if primary_provider.name == "openai" else f"text_{primary_provider.name}"
             try:
-                obs_text = f"{primary_provider.upper()}:{spacing}{time_result}"
+                obs_text = primary_provider.get_time_string(time_result)
                 client.set_input_settings(obs_source, {"text": obs_text}, True)
                 print(f"✅ OBS {obs_source} updated to: '{obs_text}'")
             except Exception as e:
