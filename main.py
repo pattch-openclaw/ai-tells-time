@@ -154,6 +154,23 @@ async def main_loop():
         # Connect to the OBS WebSocket
         client = obs.ReqClient(host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD)
         print("✅ Connected to OBS successfully!")
+        
+        # Update text_details source with initialized models
+        if providers:
+            details_text = "Model Details:\n"
+            for provider in providers:
+                # LocalProvider uses .model, others use .model_name
+                model_str = getattr(provider, "model_name", getattr(provider, "model", "Unknown"))
+                # Capitalize provider name (or use custom formatting if preferred)
+                provider_display = provider.name.title().replace("Openai", "OpenAI")
+                details_text += f"- {provider_display}: {model_str}\n"
+                
+            try:
+                client.set_input_settings("text_details", {"text": details_text.strip()}, True)
+                print("✅ OBS text_details updated with model information")
+            except Exception as e:
+                print(f"⚠️ Could not update OBS text_details: {e}")
+                
     except Exception as e:
         print(f"⚠️ Failed to connect to OBS. Is it running? Error: {e}")
         print("We will run the loop anyway, but OBS text updates will be skipped.")
