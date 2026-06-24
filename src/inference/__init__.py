@@ -252,18 +252,43 @@ class OllamaProvider(BaseInferenceProvider):
     def __init__(self, model: str = "llava:7b"):
         super().__init__("ollama")
         self.model = model
-        # TODO: Implement localhost connection and model selection
+        self.base_url = "http://localhost:11434"
     
     async def tell_time(self, image_path: Path) -> str:
-        # TODO: Implement Ollama API call
-        return "Ollama provider not yet implemented"
+        import base64
+        import aiohttp
+        
+        # Encode image to base64
+        image_bytes = image_path.read_bytes()
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        
+        prompt = format_prompt("default")
+        
+        # Build request payload for Ollama API
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "images": [image_b64],
+            "stream": False
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self.base_url}/api/generate",
+                json=payload
+            ) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    raise Exception(f"Ollama API error: {response.status} - {error_text}")
+                
+                result = await response.json()
+                return result.get("response", "")
     
     async def parse_response(self, raw_response: str) -> Optional[str]:
-        # TODO: Implement response parsing
         return extract_time_from_text(raw_response)
     
     async def handle_error(self, error: Exception, attempt: int) -> bool:
-        # TODO: Implement error handling
+        print(f"Ollama API Error (Attempt {attempt}): {error}")
         return attempt < 3
 
 
