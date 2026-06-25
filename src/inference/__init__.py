@@ -439,12 +439,40 @@ class LocalProvider(BaseInferenceProvider):
         return attempt < 3
 
 
+class ReferenceProvider(BaseInferenceProvider):
+    """Reference provider that just returns the current system time."""
+    
+    def __init__(self):
+        super().__init__("reference")
+        
+    def get_time_string(self, time_result: str) -> str:
+        # User wants "ACTUAL: HH:MM (PST)" output style
+        return f"ACTUAL: {time_result}"
+        
+    def get_model_detail_string(self) -> str:
+        return "Reference: System Clock"
+        
+    async def tell_time(self, image_path: Path) -> str:
+        import datetime
+        import zoneinfo
+        # Use PST (America/Los_Angeles)
+        now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
+        return now.strftime("%H:%M (PST)")
+        
+    async def parse_response(self, raw_response: str) -> Optional[str]:
+        # Return as-is since we generated it perfectly
+        return raw_response
+        
+    async def handle_error(self, error: Exception, attempt: int) -> bool:
+        return False
+
+
 def get_provider(provider_name: str, **kwargs) -> BaseInferenceProvider:
     """
     Factory function to get an inference provider by name.
     
     Args:
-        provider_name: Name of the provider (openai, gemini, claude, local)
+        provider_name: Name of the provider (openai, gemini, claude, local, reference)
         **kwargs: Additional arguments to pass to the provider constructor
         
     Returns:
@@ -458,6 +486,7 @@ def get_provider(provider_name: str, **kwargs) -> BaseInferenceProvider:
         "gemini": GeminiProvider,
         "claude": ClaudeProvider,
         "local": LocalProvider,
+        "reference": ReferenceProvider,
     }
     
     provider_class = providers.get(provider_name.lower())
