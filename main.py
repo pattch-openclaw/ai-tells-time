@@ -241,7 +241,7 @@ async def main_loop():
                     else:
                         obs_source = f"text_{provider.name}"
                         
-                    obs_text = provider.get_time_string("...")
+                    obs_text = provider.get_time_string(provider.get_placeholder_text())
                     print(f"🔄 OBS {obs_source} queueing: '{obs_text}'")
                     await update_obs_text(client, obs_source, obs_text)
 

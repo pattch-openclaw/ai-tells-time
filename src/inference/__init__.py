@@ -68,6 +68,10 @@ class BaseInferenceProvider(ABC):
         model_str = getattr(self, "model_name", getattr(self, "model", "Unknown"))
         return f"{provider_display}: {model_str}"
 
+    def get_placeholder_text(self) -> str:
+        """Get the placeholder text to show while waiting for inference."""
+        return "..."
+
 
 # Shared prompt templates
 PROMPT_TEMPLATES = {
@@ -470,6 +474,12 @@ class ReferenceProvider(BaseInferenceProvider):
         
     def get_model_detail_string(self) -> str:
         return "Reference: System Clock"
+        
+    def get_placeholder_text(self) -> str:
+        import datetime
+        import zoneinfo
+        now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
+        return now.strftime("%I:%M (PST)")
         
     async def tell_time(self, image_path: Path) -> str:
         # Use PST (America/Los_Angeles)

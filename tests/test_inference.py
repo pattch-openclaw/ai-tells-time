@@ -53,5 +53,16 @@ async def test_reference_provider_12h_format():
     
     with patch("src.inference.__init__.datetime.datetime") as mock_datetime:
         mock_datetime.now.return_value = mock_now
+        
+        # Test get_placeholder_text correctly returns mock time
+        placeholder = provider.get_placeholder_text()
+        assert placeholder == "07:50 (PST)", f"Expected 07:50 (PST), got {placeholder}"
+        
         time_str = await provider.tell_time(Path("dummy.png"))
         assert time_str == "07:50 (PST)", f"Expected 07:50 (PST), got {time_str}"
+
+@pytest.mark.asyncio
+async def test_placeholder_text():
+    # Base implementation should return "..."
+    openai = OpenAIProvider()
+    assert openai.get_placeholder_text() == "..."
