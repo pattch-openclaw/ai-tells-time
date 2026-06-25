@@ -116,7 +116,7 @@ def extract_time_from_text(text: str) -> Optional[str]:
     # Try to find time patterns like "12:34", "3:15 PM", "09:00"
     time_patterns = [
         r'\b([01]?\d):([0-5]\d)\s*([APap][Mm])?\b',  # HH:MM with optional AM/PM
-        r'\b([01]?\d)\s*(?:AM|PM|am|pm)\b',  # Just HH with AM/PM
+        r'\b([01]?\d)\s*([APap][Mm])\b',  # Just HH with AM/PM (added capture group for AM/PM)
     ]
     
     for pattern in time_patterns:
@@ -124,11 +124,27 @@ def extract_time_from_text(text: str) -> Optional[str]:
         if match:
             groups = match.groups()
             hour = int(groups[0])
-            minute = int(groups[1])
+            
+            # If the matched pattern has 3 groups (or 2 and the 2nd is a number), 
+            # groups[1] is minutes. If groups[1] is AM/PM, minutes is 0.
+            if len(groups) > 1 and groups[1] is not None:
+                if groups[1].upper() in ['AM', 'PM']:
+                    minute = 0
+                else:
+                    minute = int(groups[1])
+            else:
+                minute = 0
             
             # Handle AM/PM conversion
-            if len(groups) > 2 and groups[2]:
-                is_pm = groups[2].upper() == 'PM'
+            # Find the AM/PM string in the groups
+            am_pm_group = None
+            for g in groups[1:]:
+                if g and isinstance(g, str) and g.upper() in ['AM', 'PM']:
+                    am_pm_group = g
+                    break
+            
+            if am_pm_group:
+                is_pm = am_pm_group.upper() == 'PM'
                 if is_pm and hour < 12:
                     hour += 12
                 elif not is_pm and hour == 12:
@@ -439,6 +455,9 @@ class LocalProvider(BaseInferenceProvider):
         return attempt < 3
 
 
+import datetime
+import zoneinfo
+
 class ReferenceProvider(BaseInferenceProvider):
     """Reference provider that just returns the current system time."""
     
@@ -453,8 +472,6 @@ class ReferenceProvider(BaseInferenceProvider):
         return "Reference: System Clock"
         
     async def tell_time(self, image_path: Path) -> str:
-        import datetime
-        import zoneinfo
         # Use PST (America/Los_Angeles)
         now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
         return now.strftime("%I:%M (PST)")
