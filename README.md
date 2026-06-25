@@ -51,7 +51,7 @@ Since we're already using OBS for compositing, we'll leverage OBS to capture clo
 1. **Trigger Screenshot:** Use `GetSourceScreenshot` via obs-websocket to capture the `Clock_Camera` source
 2. **OBS Output:** Screenshots saved to default OBS folder (`~/Pictures/OBS/` on macOS)
 3. **File Management:** Monitor the OBS directory, move latest PNG to project temp folder
-4. **Downscale:** Reduce to 480p (854x480) for cost efficiency while maintaining readability
+4. **Downscale:** Reduce to 360p (640x360) for cost efficiency while maintaining readability
 5. **Cleanup:** Remove old temp files after each loop iteration
 
 ### OBS Source Name
@@ -59,7 +59,7 @@ Since we're already using OBS for compositing, we'll leverage OBS to capture clo
 
 ### Screenshot Settings
 - Format: PNG
-- Resolution: 854x480 (480p) - balances readability with API token costs
+- Resolution: 640x360 (360p) - balances readability with API token costs
 - Compression: 85% quality (smaller files, still high quality)
 
 ### Example OBS WebSocket Screenshot Call
@@ -173,7 +173,7 @@ uv run main.py --providers gemini local
 The image capture system has been enhanced with configurable resolution and output location:
 
 **Features:**
-- ✅ Configurable output resolution (e.g., `854x480`, `1920x1080`)
+- ✅ Configurable output resolution (e.g., `640x360`, `1920x1080`)
 - ✅ Configurable output directory for captured images
 - ✅ Automatic file management with timestamps
 - ✅ Main loop for periodic captures with `--single` mode for one-off captures
@@ -193,7 +193,7 @@ uv run cleanup
 uv run main.py
 
 # Single capture with custom settings
-uv run capture --resolution 854x480 --output ~/Coding/ai-tells-time-output
+uv run capture --resolution 640x360 --output ~/Coding/ai-tells-time-output
 ```
 
 ### ✅ OBS WebSocket + Image Capture Working (Legacy)
@@ -213,7 +213,7 @@ The capture script successfully:
 1. Connects to OBS WebSocket
 2. Calls `save_source_screenshot` on the `Clock_Camera` source
 3. Saves the image directly to the specified output directory
-4. Image is captured at configurable resolution (default: 854x480) in PNG format with 85% quality
+4. Image is captured at configurable resolution (default: 640x360) in PNG format with 85% quality
 
 **Output Location:**
 - By default: OS temp directory (`/var/folders/.../ai-tells-time/clock_temp_*.png`)

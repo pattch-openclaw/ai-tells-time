@@ -23,7 +23,7 @@ OBS_PORT = os.getenv("OBS_WEBSOCKET_PORT", "4455")
 OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
 
 # Image capture settings
-CAPTURE_RESOLUTION = (854, 480)  # (width, height)
+CAPTURE_RESOLUTION = (640, 360)  # (width, height) - 360p for reduced AI costs
 
 # Available providers (all implemented providers)
 ALL_PROVIDERS = ["gemini", "local", "openai", "claude"]
@@ -180,7 +180,7 @@ async def main_loop():
         current_time_str = now.strftime("%H:%M:%S")  # Default fallback time
 
         try:
-            image_path = await capture_clock_image(resolution=CAPTURE_RESOLUTION)
+            image_path = await capture_clock_image(resolution=CAPTURE_RESOLUTION, crop_center=True)
             print(f"Image saved to: {image_path}")
 
             # Run all AI providers concurrently, updating OBS as each completes

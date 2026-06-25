@@ -190,15 +190,18 @@ class TestCaptureClockImage:
         """Capture with output directory moves file."""
         with patch("src.capture.trigger_screenshot") as mock_trigger, \
              patch("src.capture.move_to_output") as mock_move, \
-             patch("src.capture.cleanup_temp_dir"):
+             patch("src.capture.cleanup_temp_dir"), \
+             patch("src.capture.crop_to_square") as mock_crop:
             # Setup mocks
             temp_path = Path("/tmp/clock_temp.png")
             output_path = Path("/output/clock_final.png")
             mock_trigger.return_value = temp_path
             mock_move.return_value = output_path
+            mock_crop.return_value = temp_path
 
             result = await capture_clock_image(output_dir=Path("/output"))
 
+            mock_crop.assert_called_once()
             mock_move.assert_called_once()
             assert result == output_path
 
@@ -206,26 +209,34 @@ class TestCaptureClockImage:
     async def test_capture_clock_image_no_output(self):
         """Capture without output directory returns temp path."""
         with patch("src.capture.trigger_screenshot") as mock_trigger, \
-             patch("src.capture.cleanup_temp_dir"):
+             patch("src.capture.cleanup_temp_dir"), \
+             patch("src.capture.crop_to_square") as mock_crop:
             temp_path = Path("/tmp/clock_temp.png")
             mock_trigger.return_value = temp_path
+            mock_crop.return_value = temp_path
 
             result = await capture_clock_image(output_dir=None)
 
             # Should return temp path directly
             assert result == temp_path
             mock_trigger.assert_called_once()
+            mock_crop.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_capture_clock_image_cleanup_called(self):
         """Cleanup is called after capture."""
         with patch("src.capture.trigger_screenshot") as mock_trigger, \
-             patch("src.capture.cleanup_temp_dir") as mock_cleanup_temp_dir:
+             patch("src.capture.cleanup_temp_dir") as mock_cleanup_temp_dir, \
+             patch("src.capture.move_to_output") as mock_move, \
+             patch("src.capture.crop_to_square") as mock_crop:
             temp_path = Path("/tmp/clock_temp.png")
             mock_trigger.return_value = temp_path
+            mock_move.return_value = temp_path
+            mock_crop.return_value = temp_path
 
             await capture_clock_image()
 
+            mock_crop.assert_called_once()
             mock_cleanup_temp_dir.assert_called_once_with(hours_old=1)
 
 
@@ -243,8 +254,10 @@ class TestIntegration:
         temp_file = temp_dir / "clock_temp_20240101_120000.png"
         temp_file.write_text("fake image data")
 
-        # Mock trigger_screenshot to return our test file
-        with patch("src.capture.trigger_screenshot", return_value=temp_file):
+        # Mock trigger_screenshot and crop_to_square
+        with patch("src.capture.trigger_screenshot", return_value=temp_file), \
+             patch("src.capture.crop_to_square") as mock_crop:
+            mock_crop.return_value = temp_file
             result = await capture_clock_image(output_dir=tmp_path / "output")
 
         assert result.exists()

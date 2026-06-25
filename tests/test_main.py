@@ -27,7 +27,7 @@ class TestMainLoop:
     async def test_main_loop_uses_configured_resolution(self):
         """Main loop uses configured resolution."""
         import main
-        assert main.CAPTURE_RESOLUTION == (854, 480)
+        assert main.CAPTURE_RESOLUTION == (640, 360)
 
     @pytest.mark.asyncio
     async def test_main_loop_has_main_loop_function(self):
