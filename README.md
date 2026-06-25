@@ -52,7 +52,11 @@ Since we're already using OBS for compositing, we'll leverage OBS to capture clo
 2. **OBS Output:** Screenshots saved to default OBS folder (`~/Pictures/OBS/` on macOS)
 3. **File Management:** Monitor the OBS directory, move latest PNG to project temp folder
 4. **Downscale:** Reduce to 360p (640x360) for cost efficiency while maintaining readability
-5. **Cleanup:** Remove old temp files after each loop iteration
+5. **Cost Optimization:** Inference frequency is optimized to reduce API costs:
+    - **Local provider runs every minute** - Always runs for real-time updates
+    - **External providers (Gemini, OpenAI, Claude) run every 5 minutes** - Skipped on the 4 intermediate minutes
+    - **Override:** Use `--every-minute` flag to run all providers every minute (useful for testing or if costs become acceptable)
+6. **Cleanup:** Remove old temp files after each loop iteration
 
 ### OBS Source Name
 - `Clock_Camera` (the camera source we'll capture from)
