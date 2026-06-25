@@ -29,7 +29,7 @@ A key design philosophy of this project is that **AI hallucinations are a featur
 Need to balance cost vs "personality". Since hallucinations are desired, cheaper or smaller models might actually be *better*.
 *   **Local/Free:** `local` provider running lightweight vision models (like `moondream`, `llava:7b`, or `llama3.2-vision:11b`). These will run efficiently on the target M4 Mac Mini utilizing Apple Silicon's unified memory, acting as our chaotic baseline.
 *   **API (Cheap/Free tiers):** `gemini-2.5-flash`, `gpt-4o-mini`, `claude-haiku-4-5`.
-*   **Status:** ✅ Basic integrations are fully implemented for Gemini, Claude, and OpenAI, as well as locally running models.
+*   **Status:** ✅ Integrations are fully implemented for Gemini, Claude, and OpenAI (all enforcing strict JSON structured outputs), as well as locally running models.
 
 ### 4. Text-to-Speech (TTS)
 *   Needs to be free/cheap given the 1-minute interval (1,440 requests/day).
@@ -98,8 +98,8 @@ OBS_WEBSOCKET_PASSWORD=your_obs_password_here
 
 # AI API Settings
 GEMINI_API_KEY=your-gemini-api-key-here  # Required for Gemini provider
-# OPENAI_API_KEY=***  # Optional, for future OpenAI provider
-# ANTHROPIC_API_KEY=***  # Optional, for future Claude provider
+OPENAI_API_KEY=your-openai-api-key-here      # Required for OpenAI provider
+ANTHROPIC_API_KEY=your-anthropic-api-key-here # Required for Claude provider
 # LOCAL_MODEL=qwen2.5vl:7b  # Optional, default model for Local
 ```
 
@@ -136,26 +136,24 @@ tar xzf ./actions-runner.tar.gz
 
 ## Current Status
 
-### ✅ Gemini Provider Integration (Working End-to-End)
+### ✅ AI Provider Integrations (Working End-to-End)
 
-The Gemini API integration is now fully functional:
+The AI API integrations are now fully functional across major providers:
 - ✅ Configurable provider selection via `--providers` CLI flag
-- ✅ Gemini provider using Google's `genai` SDK with Structured Outputs
-- ✅ JSON-formatted responses for reliable time parsing
-- ✅ Configurable API key via `GEMINI_API_KEY` environment variable
-- ✅ Automatic retries with exponential backoff
+- ✅ All providers (Gemini, OpenAI, Claude) enforce strict Structured Outputs for reliable JSON time parsing
+- ✅ Configurable API keys via `.env` environment variables
+- ✅ Automatic retries and basic error handling for API calls
 
 **Setup:**
-1. Get a server API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
-   - The key must start with `AIza...` (not `gen-lang-client-...`)
-2. Add to your `.env` file: `GEMINI_API_KEY=your-key-here`
+1. Get server API keys from your preferred providers (Google AI Studio, OpenAI, Anthropic)
+2. Add them to your `.env` file (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
 3. Run with: `uv run main.py` (runs all providers by default)
 
 ## Default Behavior
 
 When running `uv run main.py` without any arguments, ALL implemented providers are run by default. This ensures the system works end-to-end with multiple AI models.
 
-Currently, this means both **Gemini** and **Local** providers run simultaneously. Use the `--providers` flag to run specific providers only.
+Currently, this means **Gemini**, **OpenAI**, **Claude**, and **Local** providers run simultaneously (provided their API keys are present). Use the `--providers` flag to run specific providers only.
 
 **Provider Selection:****
 ```bash
