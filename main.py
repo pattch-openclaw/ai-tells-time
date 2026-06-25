@@ -28,6 +28,9 @@ CAPTURE_RESOLUTION = (640, 360)  # (width, height) - 360p for reduced AI costs
 # Available providers (all implemented providers)
 ALL_PROVIDERS = ["gemini", "local", "openai", "claude"]
 
+# External providers (non-local, more expensive)
+EXTERNAL_PROVIDERS = ["gemini", "openai", "claude"]
+
 
 def ensure_local_running():
     """Ensure Ollama server is running before starting the app."""
@@ -71,6 +74,13 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="qwen2.5vl:7b",
         help="Local model to use (default: qwen2.5vl:7b)"
+    )
+
+    # Inference frequency mode
+    parser.add_argument(
+        "--every-minute",
+        action="store_true",
+        help="Run all providers every minute (default: only external providers every 5 min, local every min)"
     )
 
     args = parser.parse_args()
@@ -173,8 +183,11 @@ async def main_loop():
         client = None
 
     print("\nStarting the 60-second broadcast loop...")
+    print(f"Inference mode: {'All providers every minute' if args.every_minute else 'Local every minute, external every 5 minutes'}")
 
+    run_count = 0
     while True:
+        run_count += 1
         # 1. Capture an image from OBS
         now = datetime.now()
         current_time_str = now.strftime("%H:%M:%S")  # Default fallback time
@@ -183,10 +196,24 @@ async def main_loop():
             image_path = await capture_clock_image(resolution=CAPTURE_RESOLUTION, crop_center=True)
             print(f"Image saved to: {image_path}")
 
+            # Determine which providers to run this iteration
+            if args.every_minute or run_count % 5 == 1:  # Run all providers on first run and every 5th run
+                providers_to_run = providers
+                print(f"🔄 Running all {len(providers)} providers (run #{run_count})...")
+            else:
+                # Only run local provider every 5 minutes
+                local_providers = [p for p in providers if p.name == "local"]
+                providers_to_run = local_providers
+                if providers_to_run:
+                    print(f"🔄 Running only local provider (run #{run_count})...")
+                else:
+                    print(f"⚠️ No local provider available for run #{run_count}")
+                    providers_to_run = []
+
             # Run all AI providers concurrently, updating OBS as each completes
-            if providers:
+            if providers_to_run:
                 # First, update OBS with "Provider: ..." for all providers
-                for provider in providers:
+                for provider in providers_to_run:
                     # Use text_gpt for openai, text_{provider} for others
                     obs_source = "text_gpt" if provider.name == "openai" else f"text_{provider.name}"
                     obs_text = provider.get_time_string("...")
@@ -197,7 +224,7 @@ async def main_loop():
                         print(f"⚠️ Could not update OBS {obs_source}: {e}")
 
                 # Run inference tasks concurrently, update OBS as each completes
-                tasks = [run_inference_for_provider(p, image_path) for p in providers]
+                tasks = [run_inference_for_provider(p, image_path) for p in providers_to_run]
                 results = []
                 for completed_task in asyncio.as_completed(tasks):
                     provider, time_result = await completed_task
