@@ -25,6 +25,18 @@ OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
 # Image capture settings
 CAPTURE_RESOLUTION = (640, 360)  # (width, height) - 360p for reduced AI costs
 
+# Add asyncio Lock for OBS to prevent overlapping writes and avoid blocking the event loop
+obs_lock = asyncio.Lock()
+
+async def update_obs_text(client, source, text):
+    """Update OBS text source safely in a background thread to prevent blocking the async loop."""
+    if not client: return
+    async with obs_lock:
+        try:
+            await asyncio.to_thread(client.set_input_settings, source, {"text": text}, True)
+        except Exception as e:
+            print(f"⚠️ Could not update OBS {source}: {e}")
+
 # Available providers (all implemented providers)
 ALL_PROVIDERS = ["gemini", "local", "openai", "claude"]
 
@@ -108,6 +120,8 @@ def parse_args() -> argparse.Namespace:
 async def run_inference_for_provider(provider: BaseInferenceProvider, image_path: Path) -> tuple[BaseInferenceProvider, str]:
     """Run inference for a single provider and return (provider, time_str)."""
     try:
+        # Yield briefly so all tasks hit this point roughly at the same time
+        await asyncio.sleep(0)
         print(f"Asking {provider.name} for the time...")
         raw_response = await provider.tell_time(image_path)
         parsed_time = await provider.parse_response(raw_response)
@@ -214,8 +228,11 @@ async def main_loop():
 
             # Run all AI providers concurrently, updating OBS as each completes
             if providers_to_run:
+                # Sort providers so reference is always first
+                providers_to_run.sort(key=lambda p: 0 if p.name == "reference" else 1)
+
                 # First, update OBS with "Provider: ..." for all providers
-                for provider in providers_to_run:
+                async def set_waiting(provider):
                     # Determine OBS source name
                     if provider.name == "openai":
                         obs_source = "text_gpt"
@@ -225,14 +242,15 @@ async def main_loop():
                         obs_source = f"text_{provider.name}"
                         
                     obs_text = provider.get_time_string("...")
-                    try:
-                        client.set_input_settings(obs_source, {"text": obs_text}, True)
-                        print(f"🔄 OBS {obs_source} set to: '{obs_text}'")
-                    except Exception as e:
-                        print(f"⚠️ Could not update OBS {obs_source}: {e}")
+                    print(f"🔄 OBS {obs_source} queueing: '{obs_text}'")
+                    await update_obs_text(client, obs_source, obs_text)
 
-                # Run inference tasks concurrently, update OBS as each completes
-                tasks = [run_inference_for_provider(p, image_path) for p in providers_to_run]
+                # Wait for all "..." to be queued to OBS concurrently
+                await asyncio.gather(*(set_waiting(p) for p in providers_to_run))
+
+                # Run inference tasks concurrently by scheduling them all at once
+                tasks = [asyncio.create_task(run_inference_for_provider(p, image_path)) for p in providers_to_run]
+                
                 results = []
                 for completed_task in asyncio.as_completed(tasks):
                     provider, time_result = await completed_task
@@ -247,11 +265,9 @@ async def main_loop():
                         obs_source = f"text_{provider.name}"
                         
                     obs_text = provider.get_time_string(time_result)
-                    try:
-                        client.set_input_settings(obs_source, {"text": obs_text}, True)
-                        print(f"✅ OBS {obs_source} updated to: '{obs_text}'")
-                    except Exception as e:
-                        print(f"❌ Error updating OBS {obs_source}: {e}")
+                    print(f"✅ OBS {obs_source} queueing: '{obs_text}'")
+                    # Fire and forget the OBS update to not block the next provider result
+                    asyncio.create_task(update_obs_text(client, obs_source, obs_text))
 
                 # Use the first non-reference result as primary time
                 if results:
@@ -272,12 +288,9 @@ async def main_loop():
             if non_ref_results:
                 primary_provider, time_result = non_ref_results[0]
                 obs_source = "text_gpt" if primary_provider.name == "openai" else f"text_{primary_provider.name}"
-                try:
-                    obs_text = primary_provider.get_time_string(time_result)
-                    client.set_input_settings(obs_source, {"text": obs_text}, True)
-                    print(f"✅ OBS {obs_source} updated to: '{obs_text}'")
-                except Exception as e:
-                    print(f"❌ Error updating OBS {obs_source}: {e}")
+                obs_text = primary_provider.get_time_string(time_result)
+                print(f"✅ OBS primary {obs_source} queueing: '{obs_text}'")
+                await update_obs_text(client, obs_source, obs_text)
 
         # 3. Calculate sleep time to align exactly with the top of the next minute
         current_seconds = time.time() % 60

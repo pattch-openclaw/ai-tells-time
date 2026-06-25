@@ -457,7 +457,7 @@ class ReferenceProvider(BaseInferenceProvider):
         import zoneinfo
         # Use PST (America/Los_Angeles)
         now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
-        return now.strftime("%H:%M (PST)")
+        return now.strftime("%I:%M (PST)")
         
     async def parse_response(self, raw_response: str) -> Optional[str]:
         # Return as-is since we generated it perfectly
