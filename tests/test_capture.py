@@ -21,6 +21,7 @@ from src.capture import (
     parse_resolution,
     move_to_output,
     cleanup_temp_dir,
+    crop_to_square,
     OUTPUT_DIR,
     TEMP_DIR,
 )
@@ -221,6 +222,25 @@ class TestCaptureClockImage:
             assert result == temp_path
             mock_trigger.assert_called_once()
             mock_crop.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_crop_to_square_default_size(self):
+        """crop_to_square uses CROP_SIZE by default."""
+        with patch("PIL.Image.open") as mock_open:
+            mock_img = MagicMock()
+            mock_img.size = (640, 360)
+            mock_open.return_value.__enter__.return_value = mock_img
+            
+            # Test with default crop size (should be 360 to match image height)
+            result = crop_to_square(Path("/test.png"))
+            
+            # Verify it used the default 360px crop size
+            # For 640x360 image with 360px crop: left=(640-360)//2=140, top=(360-360)//2=0
+            mock_img.crop.assert_called_once_with((140, 0, 500, 360))
+
+
+class TestIntegration:
+    """Integration tests that use the real capture logic."""
 
     @pytest.mark.asyncio
     async def test_capture_clock_image_cleanup_called(self):
