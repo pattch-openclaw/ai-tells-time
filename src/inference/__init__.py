@@ -205,10 +205,34 @@ class OpenAIProvider(BaseInferenceProvider):
                 }
             ],
             max_tokens=300,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "time_response",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "time_hh_mm": {
+                                "type": "string"
+                            }
+                        },
+                        "required": ["time_hh_mm"],
+                        "additionalProperties": False
+                    }
+                }
+            }
         )
         return response.choices[0].message.content or ""
     
     async def parse_response(self, raw_response: str) -> Optional[str]:
+        import json
+        try:
+            data = json.loads(raw_response)
+            if "time_hh_mm" in data:
+                return data["time_hh_mm"]
+        except Exception:
+            pass
         return extract_time_from_text(raw_response)
     
     async def handle_error(self, error: Exception, attempt: int) -> bool:
@@ -316,10 +340,40 @@ class ClaudeProvider(BaseInferenceProvider):
                     ],
                 }
             ],
+            tools=[
+                {
+                    "name": "record_time",
+                    "description": "Record the time shown on the clock",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "time_hh_mm": {
+                                "type": "string",
+                                "description": "The time in HH:MM format"
+                            }
+                        },
+                        "required": ["time_hh_mm"]
+                    }
+                }
+            ],
+            tool_choice={"type": "tool", "name": "record_time"}
         )
-        return response.content[0].text if response.content else ""
+        
+        import json
+        for block in response.content:
+            if getattr(block, "type", "") == "tool_use" and getattr(block, "name", "") == "record_time":
+                return json.dumps(block.input)
+                
+        return ""
     
     async def parse_response(self, raw_response: str) -> Optional[str]:
+        import json
+        try:
+            data = json.loads(raw_response)
+            if "time_hh_mm" in data:
+                return data["time_hh_mm"]
+        except Exception:
+            pass
         return extract_time_from_text(raw_response)
     
     async def handle_error(self, error: Exception, attempt: int) -> bool:
