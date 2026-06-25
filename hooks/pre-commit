@@ -26,4 +26,16 @@ if [ "$lock_changed" -gt 0 ]; then
     fi
 fi
 
+# Run unit tests before allowing the commit
+echo "Running unit tests..."
+if command -v uv &> /dev/null; then
+    if ! uv run pytest >/dev/null 2>&1; then
+        echo "Error: Tests failed. Please fix them before committing."
+        echo "Run 'uv run pytest' to see the errors."
+        exit 1
+    fi
+else
+    echo "Warning: 'uv' command not found, skipping tests."
+fi
+
 exit 0

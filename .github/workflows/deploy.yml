@@ -39,6 +39,11 @@ jobs:
           rm -rf .venv uv.lock
           uv sync
 
+      - name: Run unit tests
+        working-directory: /Users/sam/Coding/ai-tells-time
+        run: |
+          uv run pytest
+
       - name: Ensure secrets directory exists
         run: mkdir -p ~/.config/ai-tells-time
 

@@ -3,7 +3,7 @@
 Clock Image Capture Module
 
 Captures screenshots from OBS WebSocket, manages temp files, and provides
-downscaled images for AI analysis.
+processed images for AI analysis.
 """
 
 import argparse
@@ -31,6 +31,13 @@ OBS_SOURCE_NAME = "Clock_Camera"
 OBS_HOST = os.environ.get("OBS_WEBSOCKET_HOST", "localhost")
 OBS_PORT = int(os.environ.get("OBS_WEBSOCKET_PORT", "4455"))
 OBS_PASSWORD = os.environ.get("OBS_WEBSOCKET_PASSWORD", "")
+
+# Default capture resolution (360p for reduced AI costs)
+DEFAULT_CAPTURE_RESOLUTION = (640, 360)
+
+# Square crop dimensions (center crop of the captured image)
+# Default crop_size=360 matches the image height to maximize vertical coverage
+CROP_SIZE = 360
 
 # OBS default screenshot directory (macOS) - kept for reference but not used with new API
 # OBS_SCREENSHOT_DIR = Path.home() / "Pictures" / "OBS"
@@ -63,7 +70,7 @@ async def connect_to_obs() -> ReqClient:
 async def trigger_screenshot(
     source_name: str = OBS_SOURCE_NAME,
     output_path: Optional[Path] = None,
-    resolution: Tuple[int, int] = (854, 480)
+    resolution: Tuple[int, int] = DEFAULT_CAPTURE_RESOLUTION
 ) -> Path:
     """
     Trigger a screenshot capture from OBS and save to the specified path.
@@ -104,6 +111,35 @@ async def trigger_screenshot(
         return output_path
     finally:
         ws.disconnect()
+
+
+def crop_to_square(image_path: Path, crop_size: int = CROP_SIZE) -> Path:
+    """
+    Crop an image to a square centered on the image.
+    
+    Args:
+        image_path: Path to the source image
+        crop_size: Size of the square crop (default: CROP_SIZE, which is 360px to match image height)
+        
+    Returns:
+        Path to the cropped image (overwrites original)
+    """
+    from PIL import Image
+    
+    with Image.open(image_path) as img:
+        width, height = img.size
+        
+        # Calculate crop box (centered square)
+        left = (width - crop_size) // 2
+        top = (height - crop_size) // 2
+        right = left + crop_size
+        bottom = top + crop_size
+        
+        # Crop and save
+        cropped = img.crop((left, top, right, bottom))
+        cropped.save(image_path)
+        
+        return image_path
 
 
 def move_to_output(temp_path: Path, output_dir: Path, keep_original: bool = False) -> Path:
@@ -155,7 +191,9 @@ def cleanup_temp_dir(hours_old: int = 1) -> None:
 
 async def capture_clock_image(
     output_dir: Optional[Path] = OUTPUT_DIR,
-    resolution: Tuple[int, int] = (854, 480)
+    resolution: Tuple[int, int] = DEFAULT_CAPTURE_RESOLUTION,
+    crop_center: bool = True,
+    crop_size: int = CROP_SIZE
 ) -> Path:
     """
     Main entry point for clock image capture.
@@ -163,6 +201,8 @@ async def capture_clock_image(
     Args:
         output_dir: Directory to move the captured image to. If None, keeps in temp dir.
         resolution: Tuple of (width, height) for the captured image
+        crop_center: If True, crop the center square from the captured image
+        crop_size: Size of the crop square (default: CROP_SIZE, which matches image height)
         
     Returns:
         Path to the final image location
@@ -170,6 +210,11 @@ async def capture_clock_image(
     # Trigger screenshot in OBS (saves to temp dir with new API)
     temp_path = await trigger_screenshot(resolution=resolution)
     print(f"Captured from OBS: {temp_path}")
+    
+    # Crop to square if enabled
+    if crop_center:
+        temp_path = crop_to_square(temp_path, crop_size=crop_size)
+        print(f"Cropped to square ({crop_size}x{crop_size}): {temp_path}")
     
     # If output directory specified, move the image there
     if output_dir:
@@ -197,8 +242,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--resolution", "-r",
         type=parse_resolution,
-        default="854x480",
-        help="Target resolution in WIDTHxHEIGHT format (default: 854x480)"
+        default="640x360",
+        help="Target resolution in WIDTHxHEIGHT format (default: 640x360)"
+    )
+    parser.add_argument(
+        "--no-crop",
+        action="store_true",
+        help="Disable center crop to square"
+    )
+    parser.add_argument(
+        "--crop-size",
+        type=int,
+        default=None,
+        help="Override crop size (default: matches image height)"
     )
     return parser.parse_args()
 
@@ -210,9 +266,14 @@ def main():
     # Convert output to Path if provided
     output_dir = Path(args.output) if args.output else OUTPUT_DIR
     
+    # Determine crop size (use override if provided, otherwise use default)
+    crop_size = args.crop_size if args.crop_size else CROP_SIZE
+    
     asyncio.run(capture_clock_image(
         output_dir=output_dir,
-        resolution=args.resolution
+        resolution=args.resolution,
+        crop_center=not args.no_crop,
+        crop_size=crop_size
     ))
 
 
