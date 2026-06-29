@@ -1,0 +1,24 @@
+#!/bin/bash
+# Pre-push hook to run test workflows before pushing to dev or main branches
+
+# Get current branch name
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Only enforce tests on dev and main branches
+if [ "$branch" = "dev" ] || [ "$branch" = "main" ]; then
+    echo "About to push to $branch. Running test workflows..."
+    
+    if command -v uv &> /dev/null; then
+        if ! uv run pytest; then
+            echo ""
+            echo "❌ Tests failed! Push rejected."
+            echo "Please fix the failing tests before pushing to $branch."
+            exit 1
+        fi
+        echo "✅ Tests passed! Proceeding with push."
+    else
+        echo "Warning: 'uv' command not found, skipping tests."
+    fi
+fi
+
+exit 0

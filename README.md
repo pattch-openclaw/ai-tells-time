@@ -261,14 +261,20 @@ git add pyproject.toml uv.lock
 git commit -m "Update dependencies"
 ```
 
-### Pre-commit Hook Setup
-A pre-commit hook is included in `hooks/pre-commit` to ensure `uv.lock` is always updated when `pyproject.toml` changes.
+### Git Hooks & Local Testing
+A pre-commit hook is included in `hooks/pre-commit` to ensure `uv.lock` is always updated when `pyproject.toml` changes, and a pre-push hook in `hooks/pre-push` ensures tests pass before you can push to `dev` or `main`.
 
-To install it:
+To install them:
 ```bash
 cp hooks/pre-commit .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
+
+cp hooks/pre-push .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
 ```
+
+### GitHub Actions (CI)
+The project includes automated workflows (`.github/workflows/test.yml`) that run the unit test suite automatically on any push to `dev` or pull requests to `main`/`dev`. This prevents regressions from creeping into the deployment pipeline.
 
 ## Mac Mini Setup (Self-Hosted GitHub Actions Runner)
 
