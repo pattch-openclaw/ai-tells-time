@@ -131,34 +131,27 @@ For testing without API keys, only the OBS variables are required. Gemini integr
 
 **Default Behavior:** When running `uv run main.py` without arguments, ALL implemented providers are run by default (currently: Gemini + Local). This ensures the system works end-to-end with multiple AI models. Use the `--providers` flag to run specific providers only.
 
-## Deployment Architecture
+## 9. Deployment & Development Architecture
 
 **Important:** OBS and this application run on a separate Mac Mini (not this development machine). The Mac Mini serves as both the application runtime and GitHub Actions self-hosted runner.
 
-### Development Workflow
-- **This machine (your Mac):** Code development, git commits, running tests
-- **Mac Mini:** OBS running with WebSocket, application execution, streaming to Twitch/YouTube
+### Branch Strategy
+- `main` **Branch:** The production branch. Any code pushed here is automatically pulled by the Mac Mini and executed live on the stream.
+- `dev` **Branch:** The active development branch. Use this for iterating on features (like SQLite integration or TTS) without risking the live stream. Pushes to this branch *do not* trigger the deployment action on the Mac Mini.
 
-## Mac Mini Setup (Self-Hosted GitHub Actions Runner)
+### Making Local `dev` Useful (Without the Mac Mini)
+Because the `dev` branch runs locally on your development machine where you likely don't have OBS running or the physical clock setup, we should implement/rely on the following strategies to make testing robust:
 
-If you need to re-setup the Mac Mini as a GitHub Actions runner:
+1.  **OBS Dry-Run/Mock Mode:** 
+    *   Implement a flag (e.g., `--dry-run` or `--mock-obs`) that bypasses the OBS WebSocket connection entirely.
+    *   Instead of crashing when it can't find OBS, the script should print the intended text updates to the console.
+2.  **Fixture Images for Inference:**
+    *   Instead of capturing a live screenshot via `GetSourceScreenshot`, allow passing a static local image path for inference testing (e.g., `--image-path tests/fixtures/clock-10-10.png`).
+3.  **Local Database Isolation:**
+    *   The git-ignored `data/` folder naturally isolates your local development SQLite database from the production one on the Mac Mini.
+    *   You can freely wipe, re-seed, or corrupt this local database without touching the live broadcast.
 
-```bash
-# 1. Download and extract the runner
-cd ~
-mkdir -p actions-runner && cd actions-runner
-curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/latest/download/actions-runner-osx-arm64-$(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep -oP '"tag_name": "\K[^"]+').tar.gz
-tar xzf ./actions-runner.tar.gz
-
-# 2. Configure the runner
-./config.sh --url https://github.com/pattch-openclaw/ai-tells-time --token YOUR_PAT_TOKEN
-
-# 3. Install and start as a service
-./svc.sh install sam
-./svc.sh start
-```
-
-## Current Status
+### Dependency Management with `uv`
 
 ### ✅ AI Provider Integrations (Working End-to-End)
 
@@ -275,6 +268,25 @@ To install it:
 ```bash
 cp hooks/pre-commit .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
+```
+
+## Mac Mini Setup (Self-Hosted GitHub Actions Runner)
+
+If you need to re-setup the Mac Mini as a GitHub Actions runner:
+
+```bash
+# 1. Download and extract the runner
+cd ~
+mkdir -p actions-runner && cd actions-runner
+curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/latest/download/actions-runner-osx-arm64-$(curl -s https://api.github.com/repos/actions/runner/releases/latest | grep -oP '"tag_name": "\K[^"]+').tar.gz
+tar xzf ./actions-runner.tar.gz
+
+# 2. Configure the runner
+./config.sh --url https://github.com/pattch-openclaw/ai-tells-time --token YOUR_PAT_TOKEN
+
+# 3. Install and start as a service
+./svc.sh install sam
+./svc.sh start
 ```
 
 ### Deployment on Mac Mini
