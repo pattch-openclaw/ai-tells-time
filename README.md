@@ -139,6 +139,52 @@ For testing without API keys, only the OBS variables are required. Gemini integr
 - `main` **Branch:** The production branch. Any code pushed here is automatically pulled by the Mac Mini and executed live on the stream.
 - `dev` **Branch:** The active development branch. Use this for iterating on features (like SQLite integration or TTS) without risking the live stream. Pushes to this branch *do not* trigger the deployment action on the Mac Mini.
 
+### Development Workflow
+
+**⚠️ Before Starting a New Feature: Read This!**
+
+When you're ready to start working on a new feature or change:
+
+1. **Create a Feature Branch from `dev`:**
+   ```bash
+   git checkout dev
+   git pull origin dev
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Work and Test Locally:**
+   - Use the OBS dry-run mode (`--dry-run` or `--mock-obs`) to simulate OBS connections
+   - Use fixture images (`--image-path tests/fixtures/clock-10-10.png`) for AI inference testing
+   - The local `data/` folder (git-ignored) isolates your SQLite database from production
+
+3. **Run Tests Before Pushing:**
+   The pre-push hook enforces test coverage:
+   ```bash
+   uv run pytest  # Unit tests
+   uv run pytest tests/e2e  # E2E tests
+   ```
+
+4. **Push and Create a PR:**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+   Then open a Pull Request from your feature branch to `dev` on GitHub.
+
+5. **Merge into `dev`:**
+   Once reviewed, merge the PR. The `dev` branch is your sandbox - test it there before promoting to `main`.
+
+6. **Promote to `main` (When Ready for Production):**
+   When a feature is stable and ready for the live stream:
+   ```bash
+   git checkout dev
+   git pull origin dev
+   git checkout main
+   git pull origin main
+   git merge dev
+   git push origin main
+   ```
+   This will trigger the automatic deployment to the Mac Mini.
+
 ### Making Local `dev` Useful (Without the Mac Mini)
 Because the `dev` branch runs locally on your development machine where you likely don't have OBS running or the physical clock setup, we should implement/rely on the following strategies to make testing robust:
 
