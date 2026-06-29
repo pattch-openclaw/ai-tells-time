@@ -35,6 +35,11 @@ Thumbs.db
 # Log files
 app.log
 
+# Database files (dev and prod)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
 # OBS scene collections (optional - can be gitignored if large)
 # obs-assets/
 

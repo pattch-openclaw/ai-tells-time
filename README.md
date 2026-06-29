@@ -367,3 +367,73 @@ git commit -m "Resolve uv.lock merge conflict"
 - OBS WebSocket enabled on the Mac Mini
 - Python 3.12+ installed
 - GEMINI_API_KEY set in `.env` for Gemini provider
+
+## Database
+
+The project uses SQLite for storing inference results with support for both development and production environments.
+
+### Schema
+
+The `inference_results` table tracks:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-incrementing primary key |
+| `reference_system_time` | DATETIME | The reference system time when the image was captured |
+| `model_name` | TEXT | The precise model name (e.g., "gemini-1.5-flash") |
+| `provider_family` | TEXT | The provider family (e.g., "gemini", "openai", "claude", "local") |
+| `time_guess` | TEXT | The raw output from the model |
+| `inference_failure` | BOOLEAN | Whether inference failed (output not parseable) |
+| `captured_image_filename` | TEXT | Optional path to the captured image |
+| `parsed_time` | DATETIME | Optional parsed time from the guess |
+| `guessed_offset_minutes` | INTEGER | Absolute difference from reference time in minutes |
+| `is_accurate` | BOOLEAN | Whether guess was within +/- 5 minutes |
+| `created_at` | DATETIME | When the record was inserted |
+
+### Database Files
+
+- **Development:** `data/dev_inference.db` (default when `DATABASE_ENV=dev` or unset)
+- **Production:** `data/prod_inference.db` (when `DATABASE_ENV=prod`)
+
+Both are in `.gitignore` to prevent local/production databases from conflicting.
+
+### Usage
+
+```python
+from src.database import get_database, get_dev_database, get_prod_database
+
+# Get the database based on DATABASE_ENV
+DB = get_database()
+
+# Save an inference result
+DB.save_inference_result(
+    reference_system_time=datetime.now(),
+    model_name="gemini-1.5-flash",
+    provider_family="gemini",
+    time_guess="12:34",
+    inference_failure=False,
+    captured_image_filename="clock_2024.png",
+    parsed_time=datetime.now(),
+    guessed_offset_minutes=5,
+    is_accurate=True,
+)
+
+# Get recent accuracy (last hour)
+accuracy = DB.get_recent_accuracy(hours=1)
+
+# Get overall accuracy
+overall_accuracy = DB.get_overall_accuracy()
+
+# Get average offset
+avg_offset = DB.get_average_offset(hours=24)
+```
+
+### Metrics Queries
+
+The database provides efficient queries for tracking model performance:
+
+- **Recent accuracy** (last X hours): `DB.get_recent_accuracy(hours=X)`
+- **Overall accuracy**: `DB.get_overall_accuracy()`
+- **Average absolute offset**: `DB.get_average_offset(hours=X)`
+
+All queries support optional filtering by `provider_family` and `model_name`.
