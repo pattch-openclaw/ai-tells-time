@@ -11,6 +11,7 @@ A key design philosophy of this project is that **AI hallucinations are a featur
 *   Stream simultaneously to Twitch and YouTube.
 *   Keep operating costs as close to $0 as possible (or completely free).
 *   Embrace the chaos of AI vision inaccuracies.
+*   Track and visualize model accuracy over time to highlight just how hilariously wrong (or occasionally correct) the models are.
 
 ## Architecture & Decisions to Make
 
@@ -23,7 +24,7 @@ A key design philosophy of this project is that **AI hallucinations are a featur
 *   **Python Integration:** `obsws-python` library to allow our script to remotely control OBS (update text sources, trigger TTS audio, swap clock images).
 *   **Configuration Management:** OBS "Scene Collections" will be exported as JSON files and tracked in this repository under `obs-assets/` alongside any static stream overlays. Connection credentials (host, port, password) are managed via `~/.config/ai-tells-time/.env` on the Mac Mini.
 *   **Simulcasting:** Direct broadcast to both Twitch and YouTube from OBS using a local multistream plugin (e.g., Aitum Multiple Outputs plugin). Restream.io is explicitly excluded to keep operations free and avoid monthly fees.
-*   **Status:** ✅ OBS WebSocket connection is working. The script successfully connects to OBS and updates text sources. Gemini API integration is fully implemented and working end-to-end.
+*   **Status:** ✅ Live! OBS WebSocket connection is working. The script successfully connects to OBS and updates text sources. Gemini API integration is fully implemented and working end-to-end. The OBS multistream plugin is configured and actively broadcasting to both platforms.
 
 ### 3. Vision Models
 Need to balance cost vs "personality". Since hallucinations are desired, cheaper or smaller models might actually be *better*.
@@ -79,6 +80,29 @@ await ws.call(requests.GetSourceScreenshot(
 ```
 
 This captures directly from the camera source at reduced resolution, avoiding the need for post-capture downscaling.
+
+## 8. Data & Metrics Architecture
+
+To support our focus on **Accuracy Metrics** without breaking stream stability, introducing network latency to the 1-minute loop, or causing git conflicts during deployment, we use a hybrid Local/Cloud strategy:
+
+1.  **The Local Database (SQLite)**
+    *   **Role:** The ultra-fast, primary source of truth for the main loop. All read/write operations during the 1-minute stream loop hit this local database *only*.
+    *   **Git Status:** The local DB file is strictly excluded from Git tracking (`.gitignore`) to ensure smooth `git pull` deployments on the Mac Mini.
+    *   **Short-Term Metrics:** Recent accuracy (e.g., a configurable rolling 1-hour window) is calculated by querying this local DB. If the local DB lacks sufficient data (e.g., on a fresh restart), it can fall back to the external DB, but the local DB is the primary source.
+
+2.  **The External Database (Supabase)**
+    *   **Role:** The long-term archive for both metrics data and captured media.
+    *   **Long-Term Metrics:** All-time historical accuracy stats are driven by performant queries against this external database, ensuring we capture the complete history of the project.
+
+3.  **The Sync & Offload Process**
+    *   Periodically, a separate process offloads the bulk of the local SQLite data to the external DB.
+    *   Media files (captured clock screenshots) are simultaneously uploaded to external storage buckets.
+    *   **Cleanup:** When the external write is confirmed successful, the synced local media files and old DB rows are deleted from the Mac Mini.
+    *   **Retention:** The local DB retains data for exactly *double* the short-term accuracy window. (e.g., If the short-term window is 1 hour, the local DB retains 2 hours of data). Older data is pruned post-offload. All local media is cleared upon offload.
+
+4.  **Granular Model Tracking**
+    *   Both databases track specific *model identities* (e.g., `gemini-1.5-flash`, `qwen2.5vl:7b`), rather than generic top-level providers.
+    *   This ensures that swapping a provider's active model does not cross-contaminate historical accuracy metrics.
 
 ## OBS WebSocket Configuration
 
@@ -226,7 +250,10 @@ The capture script successfully:
 Run with: `uv run capture`
 
 ### Next Steps
-- Configure direct OBS simulcasting to Twitch and YouTube via a local plugin (avoiding paid services like Restream)
+- **Current Focus: Accuracy Metrics**
+  Give viewers a broader sense of model performance over time. A guess will be considered "accurate" if it is within **+/- 5 minutes** of the actual current time. We need to implement tracking and on-stream visualization for:
+  - **Recent Accuracy**: Short-term performance trends (e.g., last hour or recent guesses).
+  - **Long-Term Accuracy**: All-time or historical success rates per model.
 - (Lower Priority) Add TTS for audio responses
 
 ## Development Practices
