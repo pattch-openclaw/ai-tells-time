@@ -388,6 +388,8 @@ The `inference_results` table tracks:
 | `parsed_time` | DATETIME | Optional parsed time from the guess |
 | `guessed_offset_minutes` | INTEGER | Absolute difference from reference time in minutes |
 | `is_accurate` | BOOLEAN | Whether guess was within +/- 5 minutes |
+| `webcam_model` | TEXT | Optional webcam model identifier |
+| `clock_model` | TEXT | Optional clock model identifier |
 | `created_at` | DATETIME | When the record was inserted |
 
 ### Database Files

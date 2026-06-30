@@ -72,9 +72,18 @@ def test_save_inference_result(setup_test_db):
         parsed_time=reference_time,
         guessed_offset_minutes=5,
         is_accurate=True,
+        webcam_model="Logitech C920",
+        clock_model="Analog Wall Clock",
     )
     
     assert result_id > 0
+    
+    # Verify the new columns are saved
+    cursor = db._conn.cursor()
+    cursor.execute("SELECT webcam_model, clock_model FROM inference_results WHERE id = ?", (result_id,))
+    row = cursor.fetchone()
+    assert row["webcam_model"] == "Logitech C920"
+    assert row["clock_model"] == "Analog Wall Clock"
 
 
 def test_save_inference_failure(setup_test_db):

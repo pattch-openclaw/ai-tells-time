@@ -49,6 +49,8 @@ class Database:
                 parsed_time DATETIME,
                 guessed_offset_minutes INTEGER,
                 is_accurate BOOLEAN NOT NULL DEFAULT 0,
+                webcam_model TEXT,
+                clock_model TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -83,6 +85,18 @@ class Database:
             ON inference_results(guessed_offset_minutes, reference_system_time)
         """)
         
+        # Index for webcam model filtering
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_webcam_model 
+            ON inference_results(webcam_model)
+        """)
+        
+        # Index for clock model filtering
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_clock_model 
+            ON inference_results(clock_model)
+        """)
+        
         self._conn.commit()
     
     def close(self) -> None:
@@ -101,6 +115,8 @@ class Database:
         parsed_time: Optional[datetime] = None,
         guessed_offset_minutes: Optional[int] = None,
         is_accurate: bool = False,
+        webcam_model: Optional[str] = None,
+        clock_model: Optional[str] = None,
     ) -> int:
         """
         Save an inference result to the database.
@@ -115,6 +131,8 @@ class Database:
             parsed_time: Optional parsed time from the guess
             guessed_offset_minutes: Optional absolute difference from reference time
             is_accurate: Whether guess was within +/- 5 minutes of reference
+            webcam_model: Optional webcam model identifier
+            clock_model: Optional clock model identifier
             
         Returns:
             The ID of the inserted row
@@ -131,8 +149,10 @@ class Database:
                 captured_image_filename,
                 parsed_time,
                 guessed_offset_minutes,
-                is_accurate
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_accurate,
+                webcam_model,
+                clock_model
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             reference_system_time.isoformat(),
             model_name,
@@ -143,6 +163,8 @@ class Database:
             parsed_time.isoformat() if parsed_time else None,
             guessed_offset_minutes,
             1 if is_accurate else 0,
+            webcam_model,
+            clock_model,
         ))
         
         self._conn.commit()
