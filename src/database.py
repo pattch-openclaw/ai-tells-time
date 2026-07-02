@@ -8,7 +8,7 @@ for both development and production environments.
 import sqlite3
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 
@@ -32,26 +32,75 @@ class Database:
         self._conn = sqlite3.connect(db_path)
         self._conn.row_factory = sqlite3.Row
         self._init_db()
+        
+        # Detect database dialect
+        self._dialect = "sqlite"
+        self._is_postgresql = False
+    
+    def _detect_dialect(self) -> str:
+        """Detect the database dialect (sqlite or postgresql)."""
+        cursor = self._conn.cursor()
+        try:
+            cursor.execute("SELECT version()")
+            cursor.fetchone()
+            return "postgresql"
+        except:
+            return "sqlite"
+    
+    def time_range_filter(self, hours: int) -> str:
+        """
+        Generate a time range filter expression for the current database dialect.
+        
+        Args:
+            hours: Number of hours to look back
+            
+        Returns:
+            SQL expression string (dialect-specific)
+        """
+        if self._is_postgresql or self._dialect == "postgresql":
+            return f"reference_system_time > NOW() - INTERVAL '{hours} hours'"
+        else:
+            # SQLite
+            return f"reference_system_time > datetime('now', '-{hours} hours')"
+    
+    def boolean_literal(self, value: bool) -> str:
+        """
+        Generate a boolean literal for the current database dialect.
+        
+        Args:
+            value: Boolean value
+            
+        Returns:
+            SQL boolean literal string
+        """
+        if self._is_postgresql or self._dialect == "postgresql":
+            return "TRUE" if value else "FALSE"
+        else:
+            return "1" if value else "0"
     
     def _init_db(self) -> None:
         """Initialize the database schema."""
         cursor = self._conn.cursor()
         
+        # Enable PostgreSQL compatibility pragmas
+        cursor.execute("PRAGMA journal_mode = WAL")
+        cursor.execute("PRAGMA synchronous = NORMAL")
+        
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS inference_results (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                reference_system_time DATETIME NOT NULL,
+                reference_system_time TIMESTAMP NOT NULL,
                 model_name TEXT NOT NULL,
                 provider_family TEXT NOT NULL,
                 time_guess TEXT NOT NULL,
-                inference_failure BOOLEAN NOT NULL DEFAULT 0,
+                inference_failure BOOLEAN NOT NULL DEFAULT FALSE,
                 captured_image_filename TEXT,
-                parsed_time DATETIME,
+                parsed_time TIMESTAMP,
                 guessed_offset_minutes INTEGER,
-                is_accurate BOOLEAN NOT NULL DEFAULT 0,
+                is_accurate BOOLEAN NOT NULL DEFAULT FALSE,
                 webcam_model TEXT,
                 clock_model TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         
@@ -154,15 +203,15 @@ class Database:
                 clock_model
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            reference_system_time.isoformat(),
+            reference_system_time.astimezone(timezone.utc).isoformat(),
             model_name,
             provider_family,
             time_guess,
-            1 if inference_failure else 0,
+            inference_failure,  # PostgreSQL-compatible: bool → int coercion
             captured_image_filename,
-            parsed_time.isoformat() if parsed_time else None,
+            parsed_time.astimezone(timezone.utc).isoformat() if parsed_time else None,
             guessed_offset_minutes,
-            1 if is_accurate else 0,
+            is_accurate,  # PostgreSQL-compatible: bool → int coercion
             webcam_model,
             clock_model,
         ))
@@ -190,11 +239,12 @@ class Database:
         cursor = self._conn.cursor()
         
         # Build the base query with dynamic hours
+        time_filter = self.time_range_filter(hours)
         query = f"""
             SELECT AVG(is_accurate) as accuracy
             FROM inference_results
-            WHERE reference_system_time > datetime('now', '-{hours} hours')
-              AND inference_failure = 0
+            WHERE {time_filter}
+              AND inference_failure = FALSE
         """
         params = []
         
@@ -216,6 +266,9 @@ class Database:
         self,
         provider_family: Optional[str] = None,
         model_name: Optional[str] = None,
+        include_local: bool = True,
+        include_external: bool = False,
+        external_db_path: Optional[Path] = None,
     ) -> float:
         """
         Calculate overall accuracy rate.
@@ -223,17 +276,65 @@ class Database:
         Args:
             provider_family: Optional filter for provider family
             model_name: Optional filter for specific model name
+            include_local: Whether to include local SQLite data
+            include_external: Whether to include external database data (Supabase/PostgreSQL)
+            external_db_path: Path to external database (if not using connection string)
             
         Returns:
             Accuracy rate as a float (0.0 to 1.0)
         """
-        cursor = self._conn.cursor()
+        results = []
+        
+        if include_local:
+            local_results = self._query_accuracy("local", provider_family, model_name)
+            results.extend(local_results)
+        
+        if include_external and external_db_path:
+            # Query external database
+            external_conn = sqlite3.connect(external_db_path)
+            external_conn.row_factory = sqlite3.Row
+            try:
+                external_results = self._query_accuracy("external", provider_family, model_name, conn=external_conn)
+                results.extend(external_results)
+            finally:
+                external_conn.close()
+        
+        if not results:
+            return 0.0
+        
+        # Calculate weighted average
+        total_accurate = sum(1 for r in results if r["is_accurate"])
+        return float(total_accurate / len(results))
+    
+    def _query_accuracy(
+        self,
+        db_type: str,
+        provider_family: Optional[str],
+        model_name: Optional[str],
+        conn: Optional[sqlite3.Connection] = None,
+    ) -> list:
+        """
+        Query accuracy data from a database.
+        
+        Args:
+            db_type: "local" or "external" (affects how we build the query)
+            provider_family: Optional filter
+            model_name: Optional filter
+            conn: Database connection (uses self._conn if None)
+            
+        Returns:
+            List of row dictionaries with is_accurate field
+        """
+        if conn is None:
+            conn = self._conn
+        
+        cursor = conn.cursor()
         
         # Build the base query
         query = """
-            SELECT AVG(is_accurate) as accuracy
+            SELECT is_accurate
             FROM inference_results
-            WHERE inference_failure = 0
+            WHERE inference_failure = FALSE
         """
         params = []
         
@@ -247,15 +348,16 @@ class Database:
             params.append(model_name)
         
         cursor.execute(query, params)
-        result = cursor.fetchone()
-        
-        return float(result["accuracy"]) if result["accuracy"] is not None else 0.0
+        return [dict(row) for row in cursor.fetchall()]
     
     def get_average_offset(
         self,
         hours: int = None,
         provider_family: Optional[str] = None,
         model_name: Optional[str] = None,
+        include_local: bool = True,
+        include_external: bool = False,
+        external_db_path: Optional[Path] = None,
     ) -> float:
         """
         Calculate average absolute offset in minutes.
@@ -264,24 +366,71 @@ class Database:
             hours: Optional number of hours to look back (None for all time)
             provider_family: Optional filter for provider family
             model_name: Optional filter for specific model name
+            include_local: Whether to include local SQLite data
+            include_external: Whether to include external database data (Supabase/PostgreSQL)
+            external_db_path: Path to external database (if not using connection string)
             
         Returns:
             Average absolute offset as a float
         """
-        cursor = self._conn.cursor()
+        offsets = []
+        
+        if include_local:
+            local_offsets = self._query_offsets("local", hours, provider_family, model_name)
+            offsets.extend(local_offsets)
+        
+        if include_external and external_db_path:
+            external_conn = sqlite3.connect(external_db_path)
+            try:
+                external_offsets = self._query_offsets("external", hours, provider_family, model_name, conn=external_conn)
+                offsets.extend(external_offsets)
+            finally:
+                external_conn.close()
+        
+        if not offsets:
+            return 0.0
+        
+        return float(sum(offsets) / len(offsets))
+    
+    def _query_offsets(
+        self,
+        db_type: str,
+        hours: int,
+        provider_family: Optional[str],
+        model_name: Optional[str],
+        conn: Optional[sqlite3.Connection] = None,
+    ) -> list:
+        """
+        Query offset data from a database.
+        
+        Args:
+            db_type: "local" or "external"
+            hours: Optional time filter
+            provider_family: Optional filter
+            model_name: Optional filter
+            conn: Database connection (uses self._conn if None)
+            
+        Returns:
+            List of offset values
+        """
+        if conn is None:
+            conn = self._conn
+        
+        cursor = conn.cursor()
         
         # Build the base query
         query = """
-            SELECT AVG(guessed_offset_minutes) as avg_offset
+            SELECT guessed_offset_minutes
             FROM inference_results
             WHERE guessed_offset_minutes IS NOT NULL
-              AND inference_failure = 0
+              AND inference_failure = FALSE
         """
         params = []
         
         # Add time filter if provided
         if hours is not None:
-            query += f" AND reference_system_time > datetime('now', '-{hours} hours')"
+            time_filter = self.time_range_filter(hours)
+            query += f" AND {time_filter}"
         
         # Add filters if provided
         if provider_family:
@@ -293,9 +442,7 @@ class Database:
             params.append(model_name)
         
         cursor.execute(query, params)
-        result = cursor.fetchone()
-        
-        return float(result["avg_offset"]) if result["avg_offset"] is not None else 0.0
+        return [row["guessed_offset_minutes"] for row in cursor.fetchall()]
     
     def get_recent_results(
         self,

@@ -190,3 +190,66 @@ def test_get_recent_results(setup_test_db):
     results = db.get_recent_results(limit=3)
     assert len(results) == 3
     assert results[0]["model_name"] == "model-0"  # Most recent first
+
+
+def test_get_overall_accuracy_multi_db(tmp_path):
+    """Test calculating accuracy across multiple databases."""
+    from src.database import Database
+    
+    # Create two test databases
+    db1_path = tmp_path / "db1.sqlite"
+    db2_path = tmp_path / "db2.sqlite"
+    
+    # Set up first database
+    os.environ["DATABASE_ENV"] = "test1"
+    db1 = Database(db1_path)
+    
+    # Insert 5 accurate results into db1
+    now = datetime.now()
+    for i in range(5):
+        db1.save_inference_result(
+            reference_system_time=now - timedelta(hours=i),
+            model_name="gemini-1.5-flash",
+            provider_family="gemini",
+            time_guess=f"{i}:00",
+            inference_failure=False,
+            guessed_offset_minutes=0,
+            is_accurate=True,
+        )
+    
+    db1.close()
+    
+    # Set up second database
+    os.environ["DATABASE_ENV"] = "test2"
+    db2 = Database(db2_path)
+    
+    # Insert 5 inaccurate results into db2
+    for i in range(5, 10):
+        db2.save_inference_result(
+            reference_system_time=now - timedelta(hours=i),
+            model_name="gemini-1.5-flash",
+            provider_family="gemini",
+            time_guess=f"{i}:00",
+            inference_failure=False,
+            guessed_offset_minutes=10,
+            is_accurate=False,
+        )
+    
+    db2.close()
+    
+    # Query db1 with include_external=True pointing to db2
+    db1_reopened = Database(db1_path)
+    try:
+        accuracy = db1_reopened.get_overall_accuracy(
+            include_local=True,
+            include_external=True,
+            external_db_path=str(db2_path)
+        )
+        assert accuracy == pytest.approx(0.5, rel=0.01)  # 5 accurate / 10 total
+    finally:
+        db1_reopened.close()
+    
+    # Cleanup
+    db1_path.unlink()
+    db2_path.unlink()
+    cleanup_database()
