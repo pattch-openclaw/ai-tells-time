@@ -86,6 +86,19 @@ class Database:
         """
         Save an inference result to the database.
         
+        Args:
+            reference_system_time: The reference system time when the image was captured
+            model_name: The precise model name (e.g., "gemini-1.5-flash")
+            provider_family: The provider family (e.g., "gemini", "openai", "claude", "local")
+            time_guess: The raw output from the model
+            inference_failure: Whether inference failed (output not parseable)
+            captured_image_filename: Optional path to the captured image
+            parsed_time: Optional parsed time from the guess
+            guessed_offset_minutes: Optional absolute difference from reference time
+            is_accurate: Whether guess was within +/- 5 minutes of reference
+            webcam_model: Optional webcam model identifier
+            clock_model: Optional clock model identifier
+            
         Returns:
             The ID of the inserted row
         """
@@ -131,6 +144,11 @@ class Database:
         """
         Calculate accuracy rate over the last X hours.
         
+        Args:
+            hours: Number of hours to look back
+            provider_family: Optional filter for provider family
+            model_name: Optional filter for specific model name
+            
         Returns:
             Accuracy rate as a float (0.0 to 1.0)
         """
@@ -154,6 +172,10 @@ class Database:
         """
         Calculate overall accuracy rate.
         
+        Args:
+            provider_family: Optional filter for provider family
+            model_name: Optional filter for specific model name
+            
         Returns:
             Accuracy rate as a float (0.0 to 1.0)
         """
@@ -189,7 +211,12 @@ _prod_db: Optional[Database] = None
 
 
 def get_dev_database() -> Database:
-    """Get the development database instance."""
+    """
+    Get the development database instance.
+    
+    Returns:
+        Database instance for development
+    """
     global _dev_db
     if _dev_db is None:
         _dev_db = Database(_DEV_DB_PATH)
@@ -197,7 +224,12 @@ def get_dev_database() -> Database:
 
 
 def get_prod_database() -> Database:
-    """Get the production database instance."""
+    """
+    Get the production database instance.
+    
+    Returns:
+        Database instance for production
+    """
     global _prod_db
     if _prod_db is None:
         _prod_db = Database(_PROD_DB_PATH)
@@ -210,6 +242,9 @@ def get_database() -> Database:
     
     Uses environment variable DATABASE_ENV to determine which database to use.
     Defaults to development database if not set.
+    
+    Returns:
+        Database instance based on current environment
     """
     import os
     env = os.getenv("DATABASE_ENV", "dev").lower()
