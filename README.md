@@ -81,28 +81,25 @@ await ws.call(requests.GetSourceScreenshot(
 
 This captures directly from the camera source at reduced resolution, avoiding the need for post-capture downscaling.
 
-## 8. Data & Metrics Architecture
+## 8. Data & Metrics (SQLite Only)
 
-To support our focus on **Accuracy Metrics** without breaking stream stability, introducing network latency to the 1-minute loop, or causing git conflicts during deployment, we use a hybrid Local/Cloud strategy:
+We use a **SQLite-only approach** for all data storage. This simplifies the architecture while still providing excellent performance for tracking accuracy metrics on the live stream.
 
-1.  **The Local Database (SQLite)**
-    *   **Role:** The ultra-fast, primary source of truth for the main loop. All read/write operations during the 1-minute stream loop hit this local database *only*.
-    *   **Git Status:** The local DB file is strictly excluded from Git tracking (`.gitignore`) to ensure smooth `git pull` deployments on the Mac Mini.
-    *   **Short-Term Metrics:** Recent accuracy (e.g., a configurable rolling 1-hour window) is calculated by querying this local DB. If the local DB lacks sufficient data (e.g., on a fresh restart), it can fall back to the external DB, but the local DB is the primary source.
+1.  **The SQLite Database**
+    *   **Role:** The single source of truth for all inference results and metrics. All read/write operations during the 1-minute stream loop hit this local database.
+    *   **Git Status:** The DB file is strictly excluded from Git tracking (`.gitignore`) to ensure smooth deployments.
+    *   **Metrics Queries:** The database provides efficient queries for tracking model performance:
+        - **Recent accuracy** (last X hours): `DB.get_recent_accuracy(hours=X)`
+        - **Overall accuracy**: `DB.get_overall_accuracy()`
+        - **Average absolute offset**: `DB.get_average_offset(hours=X)`
+    *   **Granular Model Tracking:** Tracks specific *model identities* (e.g., `gemini-1.5-flash`, `qwen2.5vl:7b`), not just provider families. This ensures swapping a provider's active model doesn't cross-contaminate historical accuracy metrics.
 
-2.  **The External Database (Supabase)**
-    *   **Role:** The long-term archive for both metrics data and captured media.
-    *   **Long-Term Metrics:** All-time historical accuracy stats are driven by performant queries against this external database, ensuring we capture the complete history of the project.
-
-3.  **The Sync & Offload Process**
-    *   Periodically, a separate process offloads the bulk of the local SQLite data to the external DB.
-    *   Media files (captured clock screenshots) are simultaneously uploaded to external storage buckets.
-    *   **Cleanup:** When the external write is confirmed successful, the synced local media files and old DB rows are deleted from the Mac Mini.
-    *   **Retention:** The local DB retains data for exactly *double* the short-term accuracy window. (e.g., If the short-term window is 1 hour, the local DB retains 2 hours of data). Older data is pruned post-offload. All local media is cleared upon offload.
-
-4.  **Granular Model Tracking**
-    *   Both databases track specific *model identities* (e.g., `gemini-1.5-flash`, `qwen2.5vl:7b`), rather than generic top-level providers.
-    *   This ensures that swapping a provider's active model does not cross-contaminate historical accuracy metrics.
+2.  **Current Focus: Accuracy Metrics**
+    *   A guess is considered "accurate" if within **+/- 5 minutes** of the actual current time.
+    *   Need to implement tracking and on-stream visualization for:
+        - **Recent Accuracy**: Short-term performance trends (e.g., last hour)
+        - **Long-Term Accuracy**: All-time success rates per model
+    *   The SQLite database already has the schema and queries in place to support this - now we need to build the on-screen display logic.
 
 ## OBS WebSocket Configuration
 
@@ -293,6 +290,9 @@ Run with: `uv run capture`
   Give viewers a broader sense of model performance over time. A guess will be considered "accurate" if it is within **+/- 5 minutes** of the actual current time. We need to implement tracking and on-stream visualization for:
   - **Recent Accuracy**: Short-term performance trends (e.g., last hour or recent guesses).
   - **Long-Term Accuracy**: All-time or historical success rates per model.
+
+The SQLite database already has the schema and queries in place to support this - now we need to build the on-screen display logic.
+
 - (Lower Priority) Add TTS for audio responses
 
 ## Development Practices
@@ -370,7 +370,7 @@ git commit -m "Resolve uv.lock merge conflict"
 
 ## Database
 
-The project uses SQLite for storing inference results with support for both development and production environments.
+The project uses SQLite as the single database for storing inference results.
 
 ### Schema
 
@@ -394,17 +394,15 @@ The `inference_results` table tracks:
 
 ### Database Files
 
-- **Development:** `data/dev_inference.db` (default when `DATABASE_ENV=dev` or unset)
-- **Production:** `data/prod_inference.db` (when `DATABASE_ENV=prod`)
+- `data/inference.db` - The single SQLite database file (git-ignored)
 
-Both are in `.gitignore` to prevent local/production databases from conflicting.
+Both development and production environments use the same database schema.
 
 ### Usage
 
 ```python
-from src.database import get_database, get_dev_database, get_prod_database
+from src.database import get_database
 
-# Get the database based on DATABASE_ENV
 DB = get_database()
 
 # Save an inference result
