@@ -7,18 +7,25 @@ Live stream where AI vision models tell time from analog clock images. Embrace h
 ## Current Status
 
 - **Clock Image Capture:** ✅ Implemented (OBS WebSocket integration)
-- **AI API Integration:** 🔄 Not yet implemented
-- **Structured Output Parsing:** 🔄 Not yet implemented
-- **Broadcasting:** 🔄 Not yet implemented
+- **AI API Integration:** ✅ Implemented (Gemini, OpenAI, Claude, Local)
+- **Structured Output Parsing:** ✅ Implemented (JSON schema enforcement)
+- **Broadcasting:** ✅ Implemented (OBS multistream to Twitch + YouTube)
+- **Database Integration:** ✅ Implemented (SQLite, manual recording helper script ready)
+- **On-stream Accuracy Metrics:** ⏳ Database ready, UI display pending
 
 ## What's Next
 
-1. **Clock Image Capture:** ✅ Done - captures from OBS `Clock_Camera` source at 480p
-2. **AI API Integration:** Integrate OpenAI, Anthropic, and Gemini vision APIs
-3. **Structured Output Parsing:** Systematic prompts + JSON parsing for time extraction
-4. **OBS WebSocket Updates:** Update text sources with AI responses (basic OBS integration already working)
+1. **On-stream Accuracy Metrics:** Display recent/overall accuracy on stream using SQLite queries
+2. **TTS Integration:** Add text-to-speech for audio responses (lower priority)
+3. **Main Loop Integration:** Integrate database saves into the main broadcast loop
 
 ## Recent Updates
+
+- **record_inference.py:** New helper script to manually record inference results
+- **Database Tests:** Added test coverage for database and script helper
+- **README Updates:** Documented database schema, metrics queries, and scripts
+
+### Previous Updates
 
 - **obsws-python:** Changed to `>=1.8.0` (available version is `<=1.8.0`)
 - **src/capture.py:** Recreated actual Python code (was missing from earlier commits)

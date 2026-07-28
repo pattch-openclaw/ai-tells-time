@@ -437,3 +437,47 @@ The database provides efficient queries for tracking model performance:
 - **Average absolute offset**: `DB.get_average_offset(hours=X)`
 
 All queries support optional filtering by `provider_family` and `model_name`.
+
+## Scripts
+
+This project includes standalone utility scripts for development and testing.
+
+### record_inference.py
+
+A helper script to manually record inference results to the database. Useful for:
+- Testing the database integration without running the main loop
+- Adding historical data for testing accuracy metrics
+- Debugging inference results
+
+**Usage:**
+```bash
+# Record an accurate result
+uv run python scripts/record_inference.py \\
+  --model gemini-1.5-flash \\
+  --guess "12:34" \\
+  --actual "12:29" \\
+  --is-accurate
+
+# Record an inaccurate result
+uv run python scripts/record_inference.py \\
+  --model local \\
+  --guess "3:15" \\
+  --actual "3:45" \\
+  --not-accurate
+```
+
+See `scripts/README.md` for full usage documentation.
+
+## Tests
+
+Run the test suite to verify all components:
+
+```bash
+uv run pytest
+```
+
+Tests include:
+- Database schema and queries (`tests/test_database.py`)
+- Inference provider parsing (`tests/test_inference.py`)
+- Image capture workflow (`tests/test_capture.py`)
+- Script helper functionality (`tests/test_record_inference.py`)
