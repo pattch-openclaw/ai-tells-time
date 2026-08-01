@@ -54,7 +54,14 @@ def main():
     args = parser.parse_args()
 
     db = get_prod_database() if args.prod else get_dev_database()
-
+    
+    # Determine environment from --prod flag
+    env_indicator = "🔴 PROD" if args.prod else "🟢 DEV"
+    
+    print(f"\n{'='*60}")
+    print(f"   📊 DATABASE ENVIRONMENT: {env_indicator}")
+    print(f"{'='*60}\n")
+    
     # Validate arguments
     if not any([args.model, args.provider, args.all_models]):
         print("❌ Must specify --model, --provider, or --all-models")

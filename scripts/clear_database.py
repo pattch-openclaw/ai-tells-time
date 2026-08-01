@@ -39,11 +39,18 @@ def main():
 
     db = get_prod_database() if args.prod else get_dev_database()
     db_path = db.db_path
-
+    
+    # Determine environment from --prod flag
+    env_indicator = "🔴 PROD" if args.prod else "🟢 DEV"
+    
+    print(f"\n{'='*60}")
+    print(f"   📊 DATABASE ENVIRONMENT: {env_indicator}")
+    print(f"   📁 Database path: {db_path}")
+    print(f"{'='*60}\n")
+    
     print("=" * 60)
     print("⚠️  WARNING: This will delete ALL rows from the database!")
     print("=" * 60)
-    print(f"Database path: {db_path}")
     print()
 
     if not args.force:
