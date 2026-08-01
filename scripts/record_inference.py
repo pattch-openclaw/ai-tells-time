@@ -5,6 +5,7 @@ Record inference results to the database for testing and debugging.
 Usage:
     uv run python scripts/record_inference.py --model gemini-1.5-flash --guess "12:34" --actual "12:29" --is-accurate
     uv run python scripts/record_inference.py --model local --guess "3:15" --actual "3:45" --not-accurate
+    uv run python scripts/record_inference.py --model gemini-1.5-flash --guess "12:34" --prod
 """
 
 import argparse
@@ -15,7 +16,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.database import get_database, cleanup_database
+from src.database import get_dev_database, get_prod_database, cleanup_database
 
 
 def parse_time(time_str: str, reference_time: datetime = None) -> datetime:
@@ -76,6 +77,11 @@ def main():
         default=None,
         help="Path to captured image file"
     )
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Use production database instead of dev"
+    )
 
     args = parser.parse_args()
 
@@ -111,8 +117,15 @@ def main():
         else:
             provider = "unknown"
 
+    # Determine environment from --prod flag
+    env_indicator = "🔴 PROD" if args.prod else "🟢 DEV"
+    
+    print(f"\n{'='*60}")
+    print(f"   📊 DATABASE ENVIRONMENT: {env_indicator}")
+    print(f"{'='*60}\n")
+
     # Get database
-    db = get_database()
+    db = get_prod_database() if args.prod else get_dev_database()
 
     try:
         # Save the inference result
