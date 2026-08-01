@@ -65,24 +65,28 @@ def main():
         return 1
 
     # Build query
-    query = "DELETE FROM inference_results WHERE 1=1"
+    conditions = []
     params = []
     
     if args.model:
-        # Create placeholders for IN clause
         placeholders = ",".join("?" * len(args.model))
-        query += f" AND model_name IN ({placeholders})"
+        conditions.append(f"model_name IN ({placeholders})")
         params.extend(args.model)
     
     if args.provider:
-        query += " AND provider_family = ?"
+        conditions.append("provider_family = ?")
         params.append(args.provider)
 
     # Show what will be deleted
     cursor = db._conn.cursor()
     
+    # Build WHERE clause
+    where_clause = ""
+    if conditions:
+        where_clause = " WHERE " + " AND ".join(conditions)
+    
     # Count rows that will be deleted
-    count_query = query.replace("DELETE FROM inference_results", "SELECT COUNT(*) FROM inference_results")
+    count_query = f"SELECT COUNT(*) FROM inference_results{where_clause}"
     cursor.execute(count_query, params)
     count = cursor.fetchone()[0]
 
@@ -119,7 +123,8 @@ def main():
             return 1
 
     # Execute deletion
-    cursor.execute(query, params)
+    delete_query = f"DELETE FROM inference_results{where_clause}"
+    cursor.execute(delete_query, params)
     db._conn.commit()
 
     print()
