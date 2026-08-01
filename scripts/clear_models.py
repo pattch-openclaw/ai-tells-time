@@ -64,7 +64,7 @@ def main():
         print("❌ --all-models requires --force to prevent accidental deletion")
         return 1
 
-    # Build query
+    # Build query dynamically without WHERE 1=1
     conditions = []
     params = []
     
