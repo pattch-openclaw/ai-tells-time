@@ -3,9 +3,24 @@
 ## Concept
 A delightfully absurd live stream acting as an automated Turing test focused entirely on visual temporal hallucinations. 
 
-The stream broadcasts a clock. Once per minute, a still image of the clock is fed to several different Vision AI models, asking them to tell the time. The responses are collected and presented on the stream both visually and through Text-to-Speech (TTS).
+The stream broadcasts a clock. Once per minute, a still image of the clock is fed to several different Vision AI models, asking them to tell the time. The responses are collected, analyzed for accuracy, and presented on the stream both visually and through Text-to-Speech (TTS).
 
 A key design philosophy of this project is that **AI hallucinations are a feature, not a bug.** The more they struggle to read a simple analog clock, the funnier the stream.
+
+## Current Priority: Accuracy Tracking & Display
+
+### 🎯 Main Focus: Main Loop Integration
+**Priority: Highest**
+
+The database schema and metrics queries are already in place. The next critical step is integrating accuracy tracking into the main broadcast loop so that every inference result is recorded with its accuracy calculation.
+
+Once inference data is flowing into SQLite, we can build on-screen displays showing:
+- Recent accuracy (last hour)
+- Overall accuracy per model
+- Average time offset
+
+### Future (Lower Priority)
+- **TTS Integration:** Audio responses for guesses. While it would add character to the stream, it's not essential to the core viewing experience. This can be revisited later if desired.
 
 ## Goals
 *   Stream simultaneously to Twitch and YouTube.
@@ -32,10 +47,11 @@ Need to balance cost vs "personality". Since hallucinations are desired, cheaper
 *   **API (Cheap/Free tiers):** `gemini-2.5-flash`, `gpt-4o-mini`, `claude-haiku-4-5`.
 *   **Status:** ✅ Integrations are fully implemented for Gemini, Claude, and OpenAI (all enforcing strict JSON structured outputs), as well as locally running models.
 
-### 4. Text-to-Speech (TTS)
+### 4. Text-to-Speech (TTS) - Future Work
 *   Needs to be free/cheap given the 1-minute interval (1,440 requests/day).
 *   **Proposed:** `edge-tts` (hooks into Microsoft Edge's free Azure TTS API) or local open-source options like Piper.
-*   **Status:** Lower priority. The current focus is on getting AI integration working and updating the text interfaces. Gemini is fully implemented.
+*   **Status:** Not currently prioritized. Accuracy tracking is the main focus. TTS can be added later as a polish feature.
+*   **Note:** Since the primary goal is visual accuracy metrics on stream, TTS is deferred to a potential future enhancement.
 
 ### 5. The Clock Source
 *   **Settled:** A physical webcam pointed at a real, cheap analog clock. We already have a working setup in OBS and are actively capturing stills from this camera. (High hallucination potential due to glare, angles, and physical oddities).
@@ -96,10 +112,12 @@ We use a **SQLite-only approach** for all data storage. This simplifies the arch
 
 2.  **Current Focus: Accuracy Metrics**
     *   A guess is considered "accurate" if within **+/- 5 minutes** of the actual current time.
-    *   Need to implement tracking and on-stream visualization for:
-        - **Recent Accuracy**: Short-term performance trends (e.g., last hour)
-        - **Long-Term Accuracy**: All-time success rates per model
-    *   The SQLite database already has the schema and queries in place to support this - now we need to build the on-screen display logic.
+    *   **Main Loop Integration (Priority 1)**: Connect inference results to the SQLite database during the broadcast loop, calculating and storing accuracy for each model's guess.
+    *   **On-Stream Display (Priority 2)**: Once data is flowing into the DB, build visuals to show accuracy metrics on stream (recent accuracy, overall accuracy, average offset).
+    *   The SQLite database already has the schema and queries in place to support this - now we need to:
+        1. Save inference results in the main loop
+        2. Calculate accuracy at inference time
+        3. Display metrics via OBS text sources
 
 ## OBS WebSocket Configuration
 
@@ -258,7 +276,7 @@ uv run main.py
 uv run capture --resolution 640x360 --output ~/Coding/ai-tells-time-output
 ```
 
-### ✅ OBS WebSocket + Image Capture Working (Legacy)
+### ✅ OBS WebSocket + Image Capture Working
 
 The OBS WebSocket connection and image capture are fully functional:
 - ✅ Connects to OBS on localhost:4455
@@ -267,7 +285,9 @@ The OBS WebSocket connection and image capture are fully functional:
 - ✅ Captures clock images using `save_source_screenshot` (via `capture`)
   - Images saved to configurable location (default: temp directory)
 - ✅ AI API integration (OpenAI, Anthropic, Gemini) - implemented
-- ❌ Text-to-Speech (TTS) - not yet implemented
+- ✅ SQLite database integration (schema + queries) - implemented
+- ⏳ Main loop integration (save results to DB) - in progress
+- ⏳ Accuracy display on stream - pending main loop integration
 
 ### Image Capture Workflow (Verified)
 
