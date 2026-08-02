@@ -29,31 +29,37 @@ def calculate_time_offset_minutes(ref_hour: int, ref_minute: int, guess_hour: in
     """
     Calculate the minimum absolute time offset in minutes between two times of day.
     
-    The AI is guessing a time of day (HH:MM), not a full datetime. This function
-    correctly handles the wrap-around through midnight, so the minimum offset
-    is always between 0 and 720 minutes (12 hours).
+    This function handles cases where the guess might be in 12-hour format (0-11)
+    without AM/PM indicator. It tries both AM and PM interpretations and picks the
+    one with the smaller offset.
     
     Args:
-        ref_hour: Reference hour (0-23)
+        ref_hour: Reference hour (0-23, 24-hour format)
         ref_minute: Reference minute (0-59)
-        guess_hour: Guess hour (0-23)
+        guess_hour: Guess hour (0-11 for 12-hour without AM/PM, or 0-23 for 24-hour)
         guess_minute: Guess minute (0-59)
     
     Returns:
         Minimum absolute offset in minutes (always >= 0 and <= 720)
     """
-    # Convert both times to minutes from midnight (0-1439 range)
+    # Convert reference to minutes from midnight
     ref_total = ref_hour * 60 + ref_minute
-    guess_total = guess_hour * 60 + guess_minute
     
-    # Calculate raw difference
-    diff = guess_total - ref_total
-    diff_abs = abs(diff)
+    # Try both AM (0-11) and PM (12-23) interpretations of the guess
+    def calc_offset_for_guess_hour(h):
+        guess_total = h * 60 + guess_minute
+        diff = guess_total - ref_total
+        diff_abs = abs(diff)
+        return min(diff_abs, 1440 - diff_abs)  # Wrap around midnight
     
-    # The minimum offset is the minimum of the direct difference
-    # and the wrap-around difference (going through midnight).
-    # Since there are 1440 minutes in a day, the wrap-around distance is 1440 - diff_abs
-    offset = min(diff_abs, 1440 - diff_abs)
+    # For guesses 0-11, try both AM and PM interpretations
+    if guess_hour < 12:
+        offset_am = calc_offset_for_guess_hour(guess_hour)  # Keep as AM (0-11)
+        offset_pm = calc_offset_for_guess_hour(guess_hour + 12)  # Try PM (12-23)
+        offset = min(offset_am, offset_pm)
+    else:
+        # For guesses 12-23, use as-is (already in 24-hour format)
+        offset = calc_offset_for_guess_hour(guess_hour)
     
     # Defensive assertion: offset should always be in [0, 720]
     # (max offset is 720 minutes = 12 hours for times 12 hours apart)
