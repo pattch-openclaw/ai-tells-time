@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from src.capture import capture_clock_image
 from src.inference import get_provider, BaseInferenceProvider
+from src.database import cleanup_database, get_dev_database, get_prod_database
 
 # Load environment variables from ~/.config/ai-tells-time/.env (secure location)
 config_path = Path.home() / ".config" / "ai-tells-time" / ".env"
@@ -22,11 +23,17 @@ OBS_HOST = os.getenv("OBS_WEBSOCKET_HOST", "localhost")
 OBS_PORT = os.getenv("OBS_WEBSOCKET_PORT", "4455")
 OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
 
+# Provider families for classification
+KNOWN_PROVIDER_FAMILIES = ["openai", "gemini", "claude", "local"]
+
 # Image capture settings
 CAPTURE_RESOLUTION = (640, 360)  # (width, height) - 360p for reduced AI costs
 
 # Add asyncio Lock for OBS to prevent overlapping writes and avoid blocking the event loop
 obs_lock = asyncio.Lock()
+
+# Global database instance for the main loop
+_main_db_instance = None
 
 async def update_obs_text(client, source, text):
     """Update OBS text source safely in a background thread to prevent blocking the async loop."""
@@ -59,6 +66,78 @@ def ensure_local_running():
         print(f"⚠️  Could not check Ollama status: {e}")
 
 
+def record_inference_results(results, reference_time, db, image_path):
+    """
+    Record inference results to the database.
+    
+    This helper method is called from the main loop to record results for each provider.
+    It handles all database errors gracefully to prevent crashes.
+    
+    Args:
+        results: List of (provider, time_result) tuples from inference
+        reference_time: The time when the image was captured
+        db: Database instance
+        image_path: Path to the captured image
+    """
+    
+    for provider, time_result in results:
+        try:
+            # Parse the time guess to calculate offset
+            parsed_time = provider.parse_response_sync(time_result)
+            offset_minutes = None
+            is_accurate = False
+            inference_failure = False
+
+            if parsed_time is None:
+                # Failed to parse - this is an inference failure
+                inference_failure = True
+                print(f"⚠️ Could not parse {provider.name} response: '{time_result}'")
+            else:
+                # Calculate offset from actual reference time
+                try:
+                    # Parse the time string to a datetime object
+                    guess_parts = parsed_time.split(":")
+                    guess_hour = int(guess_parts[0])
+                    guess_minute = int(guess_parts[1])
+                    parsed_dt = reference_time.replace(hour=guess_hour, minute=guess_minute, second=0, microsecond=0)
+
+                    # Calculate offset in minutes (absolute value)
+                    offset_seconds = abs((parsed_dt - reference_time).total_seconds())
+                    offset_minutes = int(offset_seconds / 60)
+
+                    # Consider accurate if within +/- 5 minutes
+                    is_accurate = offset_minutes <= 5
+                except Exception as e:
+                    print(f"⚠️ Could not calculate offset for {provider.name}: {e}")
+
+            # Determine provider_family from provider name
+            provider_family = provider.name if provider.name in KNOWN_PROVIDER_FAMILIES else "other"
+
+            # Save to database
+            db.save_inference_result(
+                reference_system_time=reference_time,
+                model_name=provider.name,
+                provider_family=provider_family,
+                time_guess=time_result,
+                inference_failure=inference_failure,
+                captured_image_filename=str(image_path),
+                parsed_time=parsed_dt if parsed_time else None,
+                guessed_offset_minutes=offset_minutes,
+                is_accurate=is_accurate,
+                webcam_model="Logitech C920",
+                clock_model="Analog Wall Clock",
+            )
+
+            if not inference_failure:
+                print(f"📊 {provider.name}: offset={offset_minutes}min, accurate={is_accurate}")
+            else:
+                print(f"❌ {provider.name}: inference failure (could not parse response)")
+
+        except Exception as e:
+            print(f"⚠️ Error recording {provider.name} to database: {e}")
+            # Don't fail the entire run if database recording fails
+
+
 # Debug: print loaded values (password hidden)
 print(f"Config loaded from {config_path}:")
 print(f"  HOST: {OBS_HOST}")
@@ -68,7 +147,7 @@ print(f"  RESOLUTION: {CAPTURE_RESOLUTION[0]}x{CAPTURE_RESOLUTION[1]}")
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command line arguments for provider selection."""
+    """Parse command line arguments for provider selection and database environment."""
     parser = argparse.ArgumentParser(description="AI Tells Time - Broadcast system")
 
     # Provider selection flags
@@ -93,6 +172,13 @@ def parse_args() -> argparse.Namespace:
         "--every-minute",
         action="store_true",
         help="Run all providers every minute (default: only external providers every 5 min, local every min)"
+    )
+
+    # Database environment selection
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Use production database instead of dev"
     )
 
     args = parser.parse_args()
@@ -200,8 +286,18 @@ async def main_loop():
         print("We will run the loop anyway, but OBS text updates will be skipped.")
         client = None
 
+    # Initialize database
+    db = get_prod_database() if args.prod else get_dev_database()
+    db_path = db.db_path
+    db_env = "PROD" if args.prod else "DEV"
+    print(f"✅ Database connection initialized ({db_env}): {db_path}")
+
     print("\nStarting the 60-second broadcast loop...")
     print(f"Inference mode: {'All providers every minute' if args.every_minute else 'Local every minute, external every 5 minutes'}")
+
+    # Store db for use in record_inference_results
+    global _main_db_instance
+    _main_db_instance = db
 
     run_count = 0
     while True:
@@ -276,6 +372,9 @@ async def main_loop():
                         _, time_result = non_ref_results[0]
                         current_time_str = time_result
 
+                # Record inference results to database
+                record_inference_results(results, now, db, image_path)
+
         except Exception as e:
             print(f"❌ Error capturing image or running inference: {e}")
             current_time_str = "Error"
@@ -306,3 +405,5 @@ if __name__ == "__main__":
         asyncio.run(main_loop())
     except KeyboardInterrupt:
         print("\nShutting down AI Tells Time loop. Goodbye!")
+    finally:
+        cleanup_database()  # Ensure database connection is closed cleanly

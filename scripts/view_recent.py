@@ -17,7 +17,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.database import get_dev_database, get_prod_database, cleanup_database
+from src.database import get_database, cleanup_database, get_dev_database, get_prod_database
 
 
 def format_time(dt_str: str) -> str:
@@ -67,13 +67,6 @@ def main():
     args = parser.parse_args()
 
     db = get_prod_database() if args.prod else get_dev_database()
-    
-    # Determine environment from --prod flag
-    env_indicator = "🔴 PROD" if args.prod else "🟢 DEV"
-    
-    print(f"\n{'='*60}")
-    print(f"   📊 DATABASE ENVIRONMENT: {env_indicator}")
-    print(f"{'='*60}\n")
 
     try:
         cursor = db._conn.cursor()
