@@ -154,15 +154,57 @@ class Database:
         """
         cursor = self._conn.cursor()
         
-        cursor.execute(f"""
+        query = f"""
             SELECT AVG(is_accurate) as accuracy
             FROM inference_results
             WHERE reference_system_time > datetime('now', '-{hours} hours')
               AND inference_failure = 0
-        """)
+        """
+        params = []
+        
+        if provider_family:
+            query += " AND provider_family = ?"
+            params.append(provider_family)
+            
+        if model_name:
+            query += " AND model_name = ?"
+            params.append(model_name)
+            
+        cursor.execute(query, params)
         
         result = cursor.fetchone()
         return float(result["accuracy"]) if result["accuracy"] is not None else 0.0
+
+
+    def get_active_models(self) -> list[str]:
+        """Get a list of all model names that have inference results."""
+        cursor = self._conn.cursor()
+        cursor.execute(
+            "SELECT DISTINCT model_name FROM inference_results WHERE inference_failure = 0 ORDER BY model_name"
+        )
+        return [row["model_name"] for row in cursor.fetchall()]
+        
+    def get_total_inferences(
+        self,
+        provider_family: Optional[str] = None,
+        model_name: Optional[str] = None,
+    ) -> int:
+        """Get total number of successful inferences."""
+        cursor = self._conn.cursor()
+        query = "SELECT COUNT(*) as total FROM inference_results WHERE inference_failure = 0"
+        params = []
+        
+        if provider_family:
+            query += " AND provider_family = ?"
+            params.append(provider_family)
+            
+        if model_name:
+            query += " AND model_name = ?"
+            params.append(model_name)
+            
+        cursor.execute(query, params)
+        result = cursor.fetchone()
+        return result["total"] if result["total"] is not None else 0
 
     def get_overall_accuracy(
         self,

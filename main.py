@@ -9,7 +9,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from src.capture import capture_clock_image
 from src.inference import get_provider, BaseInferenceProvider
-from src.database import cleanup_database, get_dev_database, get_prod_database
+from src.database import cleanup_database, get_dev_database, get_prod_database, get_database
+from src.stats import export_stats, get_stats_text
 
 # Load environment variables from ~/.config/ai-tells-time/.env (secure location)
 config_path = Path.home() / ".config" / "ai-tells-time" / ".env"
@@ -488,7 +489,19 @@ async def main_loop():
                 print(f"✅ OBS primary {obs_source} queueing: '{obs_text}'")
                 await update_obs_text(client, obs_source, obs_text)
 
-        # 3. Calculate sleep time to align exactly with the top of the next minute
+        
+        # 3. Export stats for OBS Browser Source and update text
+        try:
+            stats = export_stats()
+            stats_text = get_stats_text(stats)
+            print(f"📊 Stats updated. Overall accuracy: {stats['overall']['accuracy']*100:.1f}%")
+            
+            if client:
+                await update_obs_text(client, "text_stats", stats_text)
+        except Exception as e:
+            print(f"⚠️ Failed to export stats: {e}")
+
+        # 4. Calculate sleep time to align exactly with the top of the next minute
         current_seconds = time.time() % 60
         sleep_time = 60 - current_seconds
 
