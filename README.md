@@ -9,15 +9,22 @@ A key design philosophy of this project is that **AI hallucinations are a featur
 
 ## Current Priority: Accuracy Tracking & Display
 
-### 🎯 Main Focus: Main Loop Integration
+### 🎯 Main Focus: Accuracy Metrics Display
 **Priority: Highest**
 
-The database schema and metrics queries are already in place. The next critical step is integrating accuracy tracking into the main broadcast loop so that every inference result is recorded with its accuracy calculation.
+Database integration is complete and working end-to-end in the main loop. Inference results are now being recorded to SQLite with accuracy calculations.
 
-Once inference data is flowing into SQLite, we can build on-screen displays showing:
-- Recent accuracy (last hour)
-- Overall accuracy per model
-- Average time offset
+**What's Done:**
+- ✅ Main loop records inference results to SQLite
+- ✅ Accuracy calculated at inference time (±5 minutes threshold)
+- ✅ `view_recent.py` script to visualize results with full timestamps and metadata
+- ✅ `cleanup --clear-db` option to reset database for fresh starts
+
+**What's Next:**
+- **On-Stream Display**: Build visuals to show accuracy metrics on stream:
+  - Recent accuracy (last hour)
+  - Overall accuracy per model
+  - Average time offset
 
 ### Future (Lower Priority)
 - **TTS Integration:** Audio responses for guesses. While it would add character to the stream, it's not essential to the core viewing experience. This can be revisited later if desired.
@@ -338,6 +345,23 @@ uv run main.py
 uv run capture --resolution 640x360 --output ~/Coding/ai-tells-time-output
 ```
 
+### ✅ Database Cleanup
+
+The cleanup script can also clear the database for fresh starts:
+
+```bash
+# Clear the development database
+uv run cleanup --clear-db
+
+# Clear the production database (on Mac Mini)
+uv run cleanup --clear-db --prod
+```
+
+This is useful when:
+- Backing up data before a full reset
+- Starting fresh with new test data
+- Clearing old inference results to start recording fresh accuracy metrics
+
 ### ✅ OBS WebSocket + Image Capture Working
 
 The OBS WebSocket connection and image capture are fully functional:
@@ -348,8 +372,9 @@ The OBS WebSocket connection and image capture are fully functional:
   - Images saved to configurable location (default: temp directory)
 - ✅ AI API integration (OpenAI, Anthropic, Gemini) - implemented
 - ✅ SQLite database integration (schema + queries) - implemented
-- ⏳ Main loop integration (save results to DB) - in progress
-- ⏳ Accuracy display on stream - pending main loop integration
+- ✅ Database cleanup with `uv run cleanup --clear-db` - implemented
+- ✅ Accuracy tracking and display via `view_recent.py` - implemented
+- ⏳ Accuracy metrics on stream display - in progress (Priority 1)
 
 ### Image Capture Workflow (Verified)
 
@@ -368,12 +393,22 @@ The capture script successfully:
 Run with: `uv run capture`
 
 ### Next Steps
-- **Current Focus: Accuracy Metrics**
-  Give viewers a broader sense of model performance over time. A guess will be considered "accurate" if it is within **+/- 5 minutes** of the actual current time. We need to implement tracking and on-stream visualization for:
-  - **Recent Accuracy**: Short-term performance trends (e.g., last hour or recent guesses).
-  - **Long-Term Accuracy**: All-time or historical success rates per model.
-
-The SQLite database already has the schema and queries in place to support this - now we need to build the on-screen display logic.
+- **Current Focus: Accuracy Metrics Display**
+  Give viewers a broader sense of model performance over time. A guess will be considered "accurate" if within **+/- 5 minutes** of the actual current time.
+  
+  **What's Done:**
+  - ✅ Main loop records inference results to SQLite
+  - ✅ Accuracy calculated at inference time (±5 minutes threshold)
+  - ✅ `view_recent.py` script to visualize results with full timestamps and metadata
+  - ✅ `cleanup --clear-db` option to reset database for fresh starts
+  
+  **What's Next:**
+  - **On-Stream Display**: Build visuals to show accuracy metrics on stream:
+    - Recent accuracy (last hour)
+    - Overall accuracy per model
+    - Average time offset
+  
+  The SQLite database already has the schema and queries in place to support this - now we need to build the on-screen display logic.
 
 - (Lower Priority) Add TTS for audio responses
 
