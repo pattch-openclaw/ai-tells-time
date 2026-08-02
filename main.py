@@ -69,7 +69,7 @@ print(f"  RESOLUTION: {CAPTURE_RESOLUTION[0]}x{CAPTURE_RESOLUTION[1]}")
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command line arguments for provider selection."""
+    """Parse command line arguments for provider selection and database environment."""
     parser = argparse.ArgumentParser(description="AI Tells Time - Broadcast system")
 
     # Provider selection flags
@@ -94,6 +94,13 @@ def parse_args() -> argparse.Namespace:
         "--every-minute",
         action="store_true",
         help="Run all providers every minute (default: only external providers every 5 min, local every min)"
+    )
+
+    # Database environment selection
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Use production database instead of dev"
     )
 
     args = parser.parse_args()
@@ -202,8 +209,10 @@ async def main_loop():
         client = None
 
     # Initialize database
-    db = get_database()
-    print("✅ Database connection initialized")
+    db = get_prod_database() if args.prod else get_dev_database()
+    db_path = db.db_path
+    db_env = "PROD" if args.prod else "DEV"
+    print(f"✅ Database connection initialized ({db_env}): {db_path}")
 
     print("\nStarting the 60-second broadcast loop...")
     print(f"Inference mode: {'All providers every minute' if args.every_minute else 'Local every minute, external every 5 minutes'}")

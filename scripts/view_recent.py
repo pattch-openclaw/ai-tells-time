@@ -17,7 +17,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.database import get_database, cleanup_database
+from src.database import get_database, cleanup_database, get_dev_database, get_prod_database
 
 
 def format_time(dt_str: str) -> str:
@@ -58,10 +58,15 @@ def main():
         action="store_true",
         help="Show full row data"
     )
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Use production database instead of dev"
+    )
 
     args = parser.parse_args()
 
-    db = get_database()
+    db = get_prod_database() if args.prod else get_dev_database()
 
     try:
         cursor = db._conn.cursor()

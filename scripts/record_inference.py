@@ -15,7 +15,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.database import get_database, cleanup_database
+from src.database import get_database, cleanup_database, get_dev_database, get_prod_database
 
 
 def parse_time(time_str: str, reference_time: datetime = None) -> datetime:
@@ -76,6 +76,11 @@ def main():
         default=None,
         help="Path to captured image file"
     )
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Use production database instead of dev"
+    )
 
     args = parser.parse_args()
 
@@ -111,8 +116,8 @@ def main():
         else:
             provider = "unknown"
 
-    # Get database
-    db = get_database()
+    # Determine database
+    db = get_prod_database() if args.prod else get_dev_database()
 
     try:
         # Save the inference result
