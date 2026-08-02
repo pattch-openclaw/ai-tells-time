@@ -9,7 +9,7 @@
     <style>
         body {
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             /* Transparent background for OBS by default, but a fallback for viewing in browser */
             background-color: rgba(0, 0, 0, 0); 
             color: #ffffff;
@@ -17,40 +17,45 @@
             overflow: hidden; /* Hide scrollbars in OBS */
         }
         .dashboard {
-            display: grid;
-            grid-template-columns: 1fr;
+            display: flex;
+            flex-direction: column;
             gap: 20px;
-            width: 800px; /* Fixed width for OBS layout */
-            height: 600px;
+            width: 395px; /* Fits exactly into a 425px width OBS source with 15px padding */
+            height: 1050px; /* Fits a 1080px height stream with 15px padding */
             background: rgba(15, 15, 20, 0.85); /* Dark semi-transparent card */
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 16px;
+            padding: 25px;
             box-sizing: border-box;
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
         .header {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         h1 {
             margin: 0;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 600;
             letter-spacing: 1px;
             text-transform: uppercase;
             color: #f0f0f0;
+            line-height: 1.4;
         }
         .overall-stat {
-            font-size: 36px;
+            font-size: 48px;
             font-weight: bold;
             color: #4ade80; /* Green accent */
-            text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+            text-shadow: 0 0 15px rgba(74, 222, 128, 0.4);
+            margin: 15px 0;
         }
         .chart-container {
             position: relative;
-            height: 400px;
+            flex-grow: 1;
             width: 100%;
+            min-height: 0; /* Ensures flex container doesn't overflow */
         }
     </style>
 </head>
@@ -58,9 +63,9 @@
 
 <div class="dashboard">
     <div class="header">
-        <h1>Model Accuracy (Last 24h)</h1>
+        <h1>Model Accuracy<br/>(Last 24h)</h1>
         <div class="overall-stat" id="overall-accuracy">--%</div>
-        <div style="font-size: 14px; color: #aaa; margin-top: 5px;">Overall System Accuracy</div>
+        <div style="font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">Overall System Accuracy</div>
     </div>
     
     <div class="chart-container">
@@ -74,15 +79,6 @@
     Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
     
     let accuracyChart = null;
-
-    // A consistent color palette for models
-    const colors = [
-        'rgba(99, 102, 241, 1)',   // Indigo
-        'rgba(236, 72, 153, 1)',   // Pink
-        'rgba(34, 197, 94, 1)',    // Green
-        'rgba(245, 158, 11, 1)',   // Amber
-        'rgba(14, 165, 233, 1)'    // Sky Blue
-    ];
 
     async function fetchStats() {
         try {
@@ -143,13 +139,14 @@
                     ]
                 },
                 options: {
+                    indexAxis: 'y', // Makes the bar chart horizontal for narrow vertical layouts
                     responsive: true,
                     maintainAspectRatio: false,
                     animation: {
                         duration: 1000 // Smooth transition
                     },
                     scales: {
-                        y: {
+                        x: {
                             beginAtZero: true,
                             max: 100,
                             grid: {
@@ -161,15 +158,27 @@
                                 }
                             }
                         },
-                        x: {
+                        y: {
                             grid: {
                                 display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
                             }
                         }
                     },
                     plugins: {
                         legend: {
-                            position: 'bottom'
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: {
+                                    size: 13
+                                }
+                            }
                         }
                     }
                 }
