@@ -229,9 +229,71 @@ The AI API integrations are now fully functional across major providers:
 
 ## Default Behavior
 
+### AI Providers
 When running `uv run main.py` without any arguments, ALL implemented providers are run by default. This ensures the system works end-to-end with multiple AI models.
 
 Currently, this means **Gemini**, **OpenAI**, **Claude**, and **Local** providers run simultaneously (provided their API keys are present). Use the `--providers` flag to run specific providers only.
+
+**Provider Selection:**
+```bash
+# Default: run all implemented providers (gemini + local)
+uv run main.py
+
+# Run only gemini
+uv run main.py --providers gemini
+
+# Run only local
+uv run main.py --providers local
+
+# Run multiple providers
+uv run main.py --providers gemini local
+```
+
+### Database Integration
+The database integration is **enabled by default** during the main loop. Results are recorded to the development database unless explicitly specified otherwise.
+
+**Database Selection:**
+- **Default (no flags):** Uses the development database (`data/inference.db` - git-ignored, local only)
+- **Production mode (`--prod`):** Uses the production database (on Mac Mini, for live stream data)
+
+**Usage Examples:**
+```bash
+# Default: Run with all providers, record to dev database
+cd ~/Coding/ai-tells-time
+uv run main.py
+
+# Run with specific providers, record to dev database
+cd ~/Coding/ai-tells-time
+uv run main.py --providers gemini local
+
+# Run with production database (for Mac Mini live stream)
+cd ~/Coding/ai-tells-time
+uv run main.py --prod
+
+# Run all providers with production database
+cd ~/Coding/ai-tells-time
+uv run main.py --providers gemini local openai claude --prod
+```
+
+**Database Location:**
+- **Dev database:** `data/inference.db` (git-ignored, local to your machine)
+- **Prod database:** `~/.config/ai-tells-time/inference.db` (on Mac Mini, production data)
+
+**Recording Results to Database:**
+The database is automatically used during the main loop. Each inference result is recorded with:
+- Model name and provider family
+- Time guess and offset from actual time
+- Accuracy flag (within ±5 minutes)
+- Timestamp and captured image reference
+
+To view recent results:
+```bash
+cd ~/Coding/ai-tells-time
+uv run python scripts/view_recent.py
+
+# With production database
+uv run python scripts/view_recent.py --prod
+```
 
 **Provider Selection:****
 ```bash
