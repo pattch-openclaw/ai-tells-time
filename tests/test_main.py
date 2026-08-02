@@ -69,8 +69,8 @@ class TestMainLoopDatabaseRecording:
             mock_provider.name = "gemini"
             mock_provider.parse_response = AsyncMock(return_value="12:30")
             
-            # Simulate inference results - use a reference time that makes the guess accurate
-            reference_time = datetime.now().replace(hour=12, minute=30, second=0, microsecond=0)
+            # Use fixed reference time (not system clock)
+            reference_time = datetime(2026, 8, 1, 12, 30, 0)  # Fixed: 12:30:00
             time_result = "12:30"
             
             # Calculate offset (within 5 minutes = accurate)
@@ -118,7 +118,7 @@ class TestMainLoopDatabaseRecording:
             
             db = Database(db_path)
             
-            reference_time = datetime.now()
+            reference_time = datetime(2026, 8, 1, 12, 0, 0)  # Fixed reference time
             time_result = "invalid time format"
             
             # Simulate parse failure
@@ -149,7 +149,7 @@ class TestMainLoopDatabaseRecording:
     @pytest.mark.asyncio
     async def test_offset_calculation_accurate(self):
         """Test offset calculation for accurate guesses (within ±5 minutes)."""
-        reference_time = datetime.now().replace(second=0, microsecond=0)
+        reference_time = datetime(2026, 8, 1, 12, 30, 0)  # Fixed reference time
         
         # Guess within 5 minutes (should be accurate)
         guess_time = reference_time + timedelta(minutes=3)
@@ -164,7 +164,7 @@ class TestMainLoopDatabaseRecording:
     @pytest.mark.asyncio
     async def test_offset_calculation_inaccurate(self):
         """Test offset calculation for inaccurate guesses (outside ±5 minutes)."""
-        reference_time = datetime.now().replace(second=0, microsecond=0)
+        reference_time = datetime(2026, 8, 1, 12, 30, 0)  # Fixed reference time
         
         # Guess 10 minutes off (should be inaccurate)
         guess_time = reference_time + timedelta(minutes=10)
@@ -219,7 +219,7 @@ class TestMainLoopDatabaseRecording:
             db = Database(db_path)
             
             # Test valid write
-            reference_time = datetime.now()
+            reference_time = datetime(2026, 8, 1, 12, 0, 0)  # Fixed reference time
             db.save_inference_result(
                 reference_system_time=reference_time,
                 model_name="test",
