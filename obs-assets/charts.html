@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tells Time - Accuracy Charts</title>
+    <!-- Use Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            /* Transparent background for OBS by default, but a fallback for viewing in browser */
+            background-color: rgba(0, 0, 0, 0); 
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; /* Hide scrollbars in OBS */
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            width: 800px; /* Fixed width for OBS layout */
+            height: 600px;
+            background: rgba(15, 15, 20, 0.85); /* Dark semi-transparent card */
+            border-radius: 12px;
+            padding: 20px;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #f0f0f0;
+        }
+        .overall-stat {
+            font-size: 36px;
+            font-weight: bold;
+            color: #4ade80; /* Green accent */
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="header">
+        <h1>Model Accuracy (Last 24h)</h1>
+        <div class="overall-stat" id="overall-accuracy">--%</div>
+        <div style="font-size: 14px; color: #aaa; margin-top: 5px;">Overall System Accuracy</div>
+    </div>
+    
+    <div class="chart-container">
+        <canvas id="accuracyChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // Configuration for Chart.js
+    Chart.defaults.color = '#e2e8f0';
+    Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+    
+    let accuracyChart = null;
+
+    // A consistent color palette for models
+    const colors = [
+        'rgba(99, 102, 241, 1)',   // Indigo
+        'rgba(236, 72, 153, 1)',   // Pink
+        'rgba(34, 197, 94, 1)',    // Green
+        'rgba(245, 158, 11, 1)',   // Amber
+        'rgba(14, 165, 233, 1)'    // Sky Blue
+    ];
+
+    async function fetchStats() {
+        try {
+            // Add cache-buster to ensure we get the latest JSON
+            const response = await fetch(`stats.json?t=${new Date().getTime()}`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            updateDashboard(data);
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    }
+
+    function updateDashboard(data) {
+        // Update header stat
+        const overallPct = (data.overall.accuracy * 100).toFixed(1);
+        document.getElementById('overall-accuracy').innerText = `${overallPct}%`;
+
+        // Prepare chart data
+        const models = Object.keys(data.models);
+        const labels = models;
+        const data1h = models.map(m => data.models[m]['1h'] * 100);
+        const data24h = models.map(m => data.models[m]['24h'] * 100);
+        const dataOverall = models.map(m => data.models[m]['overall'] * 100);
+
+        if (!accuracyChart) {
+            // Initialize chart on first load
+            const ctx = document.getElementById('accuracyChart').getContext('2d');
+            accuracyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Last 1 Hour',
+                            data: data1h,
+                            backgroundColor: 'rgba(244, 63, 94, 0.8)', // Rose
+                            borderColor: 'rgba(244, 63, 94, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Last 24 Hours',
+                            data: data24h,
+                            backgroundColor: 'rgba(56, 189, 248, 0.8)', // Light Blue
+                            borderColor: 'rgba(56, 189, 248, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'All Time',
+                            data: dataOverall,
+                            backgroundColor: 'rgba(167, 139, 250, 0.8)', // Purple
+                            borderColor: 'rgba(167, 139, 250, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 1000 // Smooth transition
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        } else {
+            // Update existing chart smoothly
+            accuracyChart.data.labels = labels;
+            accuracyChart.data.datasets[0].data = data1h;
+            accuracyChart.data.datasets[1].data = data24h;
+            accuracyChart.data.datasets[2].data = dataOverall;
+            accuracyChart.update();
+        }
+    }
+
+    // Initial fetch
+    fetchStats();
+
+    // Poll every 10 seconds for updates
+    setInterval(fetchStats, 10000);
+</script>
+
+</body>
+</html>
