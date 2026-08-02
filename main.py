@@ -1,7 +1,8 @@
 import asyncio
 import time
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
+import zoneinfo
 import obsws_python as obs
 import os
 from pathlib import Path
@@ -99,11 +100,42 @@ async def record_inference_results(results, reference_time, db, image_path):
                     guess_parts = parsed_time.split(":")
                     guess_hour = int(guess_parts[0])
                     guess_minute = int(guess_parts[1])
-                    parsed_dt = reference_time.replace(hour=guess_hour, minute=guess_minute, second=0, microsecond=0)
+                    
+                    # The AI is guessing the time of day (HH:MM), not full datetime.
+                    # We need to find the minimum absolute offset considering the guess
+                    # could be on the previous day, same day, or next day.
+                    # 
+                    # Convert both times to minutes from midnight (0-1439 range)
+                    ref_total_minutes = reference_time.hour * 60 + reference_time.minute
+                    guess_total_minutes = guess_hour * 60 + guess_minute
+                    
+                    # Calculate raw difference
+                    diff = guess_total_minutes - ref_total_minutes
+                    
+                    # The minimum offset is the minimum of the direct difference
+                    # and the wrap-around difference (going through midnight).
+                    # Since there are 1440 minutes in a day, the wrap-around distance is 1440 - |diff|
+                    offset_minutes = min(abs(diff), 1440 - abs(diff))
 
-                    # Calculate offset in minutes (absolute value)
-                    offset_seconds = abs((parsed_dt - reference_time).total_seconds())
-                    offset_minutes = int(offset_seconds / 60)
+                    # Create the parsed datetime for the guessed time
+                    # Use the date that gives us the minimum offset
+                    if abs(diff) <= 720:
+                        # Direct path is shorter (or equal), use same day
+                        parsed_dt = reference_time.replace(
+                            hour=guess_hour, minute=guess_minute, second=0, microsecond=0
+                        )
+                    elif diff > 0:
+                        # Wrap-around is shorter and guess is ahead, so use previous day
+                        parsed_dt = reference_time.replace(
+                            hour=guess_hour, minute=guess_minute, second=0, microsecond=0
+                        )
+                        parsed_dt = parsed_dt - timedelta(days=1)
+                    else:
+                        # Wrap-around is shorter and guess is behind, so use next day
+                        parsed_dt = reference_time.replace(
+                            hour=guess_hour, minute=guess_minute, second=0, microsecond=0
+                        )
+                        parsed_dt = parsed_dt + timedelta(days=1)
 
                     # Consider accurate if within +/- 5 minutes
                     is_accurate = offset_minutes <= 5
@@ -303,7 +335,8 @@ async def main_loop():
     while True:
         run_count += 1
         # 1. Capture an image from OBS
-        now = datetime.now()
+        # Use PST timezone (America/Los_Angeles) to match the ReferenceProvider
+        now = datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
         current_time_str = now.strftime("%H:%M:%S")  # Default fallback time
 
         try:

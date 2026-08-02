@@ -10,6 +10,7 @@ Usage:
 import argparse
 import sys
 from datetime import datetime, timedelta
+import zoneinfo
 from pathlib import Path
 
 # Add project root to path
@@ -21,7 +22,8 @@ from src.database import get_database, cleanup_database, get_dev_database, get_p
 def parse_time(time_str: str, reference_time: datetime = None) -> datetime:
     """Parse time string in HH:MM format."""
     if reference_time is None:
-        reference_time = datetime.now()
+        # Use PST timezone (America/Los_Angeles) for consistency
+        reference_time = datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
     
     try:
         parts = time_str.split(":")
@@ -99,7 +101,18 @@ def main():
         return 1
 
     # Calculate offset and accuracy
-    offset_minutes = int(abs((guess_dt - actual_dt).total_seconds() / 60))
+    # Convert both times to minutes from midnight (0-1439 range)
+    actual_total_minutes = actual_dt.hour * 60 + actual_dt.minute
+    guess_total_minutes = guess_dt.hour * 60 + guess_dt.minute
+    
+    # Calculate raw difference
+    diff = guess_total_minutes - actual_total_minutes
+    
+    # The minimum offset is the minimum of the direct difference
+    # and the wrap-around difference (going through midnight).
+    # Since there are 1440 minutes in a day, the wrap-around distance is 1440 - |diff|
+    offset_minutes = min(abs(diff), 1440 - abs(diff))
+    
     is_accurate = args.is_accurate or (offset_minutes <= 5 and not args.not_accurate)
 
     # Determine provider family from model name
