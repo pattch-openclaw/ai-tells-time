@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from src.capture import capture_clock_image
 from src.inference import get_provider, BaseInferenceProvider
+from src.database import get_database, cleanup_database
 
 # Load environment variables from ~/.config/ai-tells-time/.env (secure location)
 config_path = Path.home() / ".config" / "ai-tells-time" / ".env"
@@ -200,6 +201,10 @@ async def main_loop():
         print("We will run the loop anyway, but OBS text updates will be skipped.")
         client = None
 
+    # Initialize database
+    db = get_database()
+    print("✅ Database connection initialized")
+
     print("\nStarting the 60-second broadcast loop...")
     print(f"Inference mode: {'All providers every minute' if args.every_minute else 'Local every minute, external every 5 minutes'}")
 
@@ -276,6 +281,75 @@ async def main_loop():
                         _, time_result = non_ref_results[0]
                         current_time_str = time_result
 
+                # Record inference results to database
+                reference_time = now  # The time when the image was captured
+                for provider, time_result in results:
+                    try:
+                        # Parse the time guess to calculate offset
+                        parsed_time = provider.parse_response(time_result)
+                        offset_minutes = None
+                        is_accurate = False
+                        inference_failure = False
+                        
+                        if parsed_time is None:
+                            # Failed to parse - this is an inference failure
+                            inference_failure = True
+                            print(f"⚠️ Could not parse {provider.name} response: '{time_result}'")
+                        else:
+                            # Calculate offset from actual reference time
+                            try:
+                                # Parse the time string to a datetime object
+                                guess_parts = parsed_time.split(":")
+                                guess_hour = int(guess_parts[0])
+                                guess_minute = int(guess_parts[1])
+                                parsed_dt = reference_time.replace(hour=guess_hour, minute=guess_minute, second=0, microsecond=0)
+                                
+                                # Calculate offset in minutes (absolute value)
+                                offset_seconds = abs((parsed_dt - reference_time).total_seconds())
+                                offset_minutes = int(offset_seconds / 60)
+                                
+                                # Consider accurate if within +/- 5 minutes
+                                is_accurate = offset_minutes <= 5
+                            except Exception as e:
+                                print(f"⚠️ Could not calculate offset for {provider.name}: {e}")
+                        
+                        # Determine provider_family from provider name
+                        provider_family = provider.name
+                        if provider.name == "openai":
+                            provider_family = "openai"
+                        elif provider.name == "gemini":
+                            provider_family = "gemini"
+                        elif provider.name == "claude":
+                            provider_family = "claude"
+                        elif provider.name == "local":
+                            provider_family = "local"
+                        else:
+                            provider_family = "other"
+                        
+                        # Save to database
+                        db.save_inference_result(
+                            reference_system_time=reference_time,
+                            model_name=provider.name,
+                            provider_family=provider_family,
+                            time_guess=time_result,
+                            inference_failure=inference_failure,
+                            captured_image_filename=str(image_path),
+                            parsed_time=parsed_dt if parsed_time else None,
+                            guessed_offset_minutes=offset_minutes,
+                            is_accurate=is_accurate,
+                            webcam_model="Logitech C920",
+                            clock_model="Analog Wall Clock",
+                        )
+                        
+                        if not inference_failure:
+                            print(f"📊 {provider.name}: offset={offset_minutes}min, accurate={is_accurate}")
+                        else:
+                            print(f"❌ {provider.name}: inference failure (could not parse response)")
+                            
+                    except Exception as e:
+                        print(f"⚠️ Error recording {provider.name} to database: {e}")
+                        # Don't fail the entire run if database recording fails
+
         except Exception as e:
             print(f"❌ Error capturing image or running inference: {e}")
             current_time_str = "Error"
@@ -306,3 +380,5 @@ if __name__ == "__main__":
         asyncio.run(main_loop())
     except KeyboardInterrupt:
         print("\nShutting down AI Tells Time loop. Goodbye!")
+    finally:
+        cleanup_database()  # Ensure database connection is closed cleanly
