@@ -66,7 +66,7 @@ def ensure_local_running():
         print(f"⚠️  Could not check Ollama status: {e}")
 
 
-def record_inference_results(results, reference_time, db, image_path):
+async def record_inference_results(results, reference_time, db, image_path):
     """
     Record inference results to the database.
     
@@ -83,7 +83,7 @@ def record_inference_results(results, reference_time, db, image_path):
     for provider, time_result in results:
         try:
             # Parse the time guess to calculate offset
-            parsed_time = provider.parse_response_sync(time_result)
+            parsed_time = await provider.parse_response(time_result)
             offset_minutes = None
             is_accurate = False
             inference_failure = False
@@ -373,7 +373,7 @@ async def main_loop():
                         current_time_str = time_result
 
                 # Record inference results to database
-                record_inference_results(results, now, db, image_path)
+                await record_inference_results(results, now, db, image_path)
 
         except Exception as e:
             print(f"❌ Error capturing image or running inference: {e}")

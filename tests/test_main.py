@@ -67,14 +67,14 @@ class TestMainLoopDatabaseRecording:
             # Mock provider
             mock_provider = MagicMock()
             mock_provider.name = "gemini"
-            mock_provider.parse_response_sync = MagicMock(return_value="12:30")
+            mock_provider.parse_response = AsyncMock(return_value="12:30")
             
             # Use fixed reference time (not system clock)
             reference_time = datetime(2026, 8, 1, 12, 30, 0)  # Fixed: 12:30:00
             time_result = "12:30"
             
             # Call the actual helper function instead of duplicating its logic
-            main.record_inference_results(
+            await main.record_inference_results(
                 [(mock_provider, time_result)],
                 reference_time,
                 db,
@@ -109,10 +109,10 @@ class TestMainLoopDatabaseRecording:
             # Mock provider with parse failure
             mock_provider = MagicMock()
             mock_provider.name = "gemini"
-            mock_provider.parse_response_sync = MagicMock(return_value=None)
+            mock_provider.parse_response = AsyncMock(return_value=None)
             
             # Use the actual helper function instead of duplicating its logic
-            main.record_inference_results(
+            await main.record_inference_results(
                 [(mock_provider, time_result)],
                 reference_time,
                 db,
@@ -203,12 +203,12 @@ class TestMainLoopDatabaseRecording:
             results[0][0].name = "gemini"
             results[1][0].name = "local"
             
-            # Mock parse_response_sync to return valid times
+            # Mock parse_response to return valid times
             for provider, _ in results:
-                provider.parse_response_sync = MagicMock(return_value="12:30")
+                provider.parse_response = AsyncMock(return_value="12:30")
             
             # This should not raise any exceptions
-            record_inference_results(results, reference_time, db, Path(tmpdir) / "test.png")
+            await record_inference_results(results, reference_time, db, Path(tmpdir) / "test.png")
             
             # Verify all results were saved
             cursor = db._conn.cursor()
@@ -233,12 +233,12 @@ class TestMainLoopDatabaseRecording:
             # Mock provider
             results = [(MagicMock(name="gemini"), "12:30")]
             results[0][0].name = "gemini"
-            results[0][0].parse_response_sync = MagicMock(return_value="12:30")
+            results[0][0].parse_response = AsyncMock(return_value="12:30")
             
             # Mock save_inference_result to raise an exception
             with patch.object(db, 'save_inference_result', side_effect=Exception("DB Error")):
                 # This should not raise any exceptions due to try/except in record_inference_results
-                record_inference_results(results, datetime(2026, 8, 1, 12, 30, 0), db, Path(tmpdir) / "test.png")
+                await record_inference_results(results, datetime(2026, 8, 1, 12, 30, 0), db, Path(tmpdir) / "test.png")
             
             db.close()
 
@@ -257,10 +257,10 @@ class TestMainLoopDatabaseRecording:
             # Mock provider with parse failure
             results = [(MagicMock(name="gemini"), "invalid time")]
             results[0][0].name = "gemini"
-            results[0][0].parse_response_sync = MagicMock(return_value=None)
+            results[0][0].parse_response = AsyncMock(return_value=None)
             
             # This should not raise any exceptions
-            record_inference_results(results, datetime(2026, 8, 1, 12, 30, 0), db, Path(tmpdir) / "test.png")
+            await record_inference_results(results, datetime(2026, 8, 1, 12, 30, 0), db, Path(tmpdir) / "test.png")
             
             # Verify failure was recorded
             cursor = db._conn.cursor()

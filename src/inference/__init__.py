@@ -72,16 +72,6 @@ class BaseInferenceProvider(ABC):
         """Get the placeholder text to show while waiting for inference."""
         return "..."
 
-    def parse_response_sync(self, raw_response: str) -> Optional[str]:
-        """Synchronous version of parse_response for database recording."""
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-            return loop.run_until_complete(self.parse_response(raw_response))
-        except RuntimeError:
-            # No event loop - create a new one
-            return asyncio.run(self.parse_response(raw_response))
-
 
 # Shared prompt templates
 PROMPT_TEMPLATES = {
