@@ -73,37 +73,12 @@ class TestMainLoopDatabaseRecording:
             reference_time = datetime(2026, 8, 1, 12, 30, 0)  # Fixed: 12:30:00
             time_result = "12:30"
             
-            # Simulate the logic from record_inference_results
-            known_provider_families = ["openai", "gemini", "claude", "local"]
-            parsed_time = mock_provider.parse_response_sync(time_result)
-            
-            if parsed_time is None:
-                inference_failure = True
-                parsed_dt = None
-                offset_minutes = None
-                is_accurate = False
-            else:
-                inference_failure = False
-                guess_parts = parsed_time.split(":")
-                parsed_dt = reference_time.replace(
-                    hour=int(guess_parts[0]), minute=int(guess_parts[1]), second=0, microsecond=0
-                )
-                offset_seconds = abs((parsed_dt - reference_time).total_seconds())
-                offset_minutes = int(offset_seconds / 60)
-                is_accurate = offset_minutes <= 5
-            
-            provider_family = mock_provider.name if mock_provider.name in known_provider_families else "other"
-            
-            db.save_inference_result(
-                reference_system_time=reference_time,
-                model_name=mock_provider.name,
-                provider_family=provider_family,
-                time_guess=time_result,
-                inference_failure=inference_failure,
-                captured_image_filename="test_image.png",
-                parsed_time=parsed_dt,
-                guessed_offset_minutes=offset_minutes,
-                is_accurate=is_accurate,
+            # Call the actual helper function instead of duplicating its logic
+            main.record_inference_results(
+                [(mock_provider, time_result)],
+                reference_time,
+                db,
+                Path(tmpdir) / "test_image.png"
             )
             
             # Verify saved
