@@ -113,14 +113,16 @@ def extract_time_from_text(text: str) -> Optional[str]:
         text: Text that may contain a time
         
     Returns:
-        Extracted time string in HH:MM format, or None if not found
+        Extracted time string in 24-hour HH:MM format, or None if not found
     """
     import re
     
-    # Try to find time patterns like "12:34", "3:15 PM", "09:00"
+    # Try to find time patterns like "12:34", "3:15 PM", "09:00", "8 AM"
+    # Pattern 1: HH:MM with optional AM/PM
+    # Pattern 2: H (hour only) with AM/PM
     time_patterns = [
         r'\b([01]?\d):([0-5]\d)\s*([APap][Mm])?\b',  # HH:MM with optional AM/PM
-        r'\b([01]?\d)\s*([APap][Mm])\b',  # Just HH with AM/PM (added capture group for AM/PM)
+        r'\b([01]?\d)\s*([APap][Mm])\b',  # Just HH with AM/PM
     ]
     
     for pattern in time_patterns:
@@ -479,12 +481,12 @@ class ReferenceProvider(BaseInferenceProvider):
         import datetime
         import zoneinfo
         now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
-        return now.strftime("%I:%M (PST)")
+        return now.strftime("%I:%M (PST)")  # 12-hour format for display
         
     async def tell_time(self, image_path: Path) -> str:
-        # Use PST (America/Los_Angeles)
+        # Use PST (America/Los_Angeles) with 12-hour format for display
         now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
-        return now.strftime("%I:%M (PST)")
+        return now.strftime("%I:%M (PST)")  # 12-hour format for display
         
     async def parse_response(self, raw_response: str) -> Optional[str]:
         # Extract just HH:MM from the response, ignoring timezone suffix
