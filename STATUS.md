@@ -11,13 +11,21 @@ Live stream where AI vision models tell time from analog clock images. Embrace h
 - **Structured Output Parsing:** ✅ Implemented (JSON schema enforcement)
 - **Broadcasting:** ✅ Implemented (OBS multistream to Twitch + YouTube)
 - **Database Integration:** ✅ Implemented (SQLite, manual recording helper script ready)
-- **On-stream Accuracy Metrics:** ⏳ Database ready, UI display pending
+- **Main Loop Integration:** ⏳ In progress - saving inference results to DB during broadcast loop
+- **On-stream Accuracy Metrics:** ⏳ Database ready, UI display pending (requires main loop integration)
 
 ## What's Next
 
-1. **On-stream Accuracy Metrics:** Display recent/overall accuracy on stream using SQLite queries
-2. **TTS Integration:** Add text-to-speech for audio responses (lower priority)
-3. **Main Loop Integration:** Integrate database saves into the main broadcast loop
+### Priority 1: Main Loop Integration (Highest Priority)
+1. Connect inference results to the SQLite database during the broadcast loop
+2. Calculate and store accuracy for each model's guess (+/- 5 minutes threshold)
+3. Once data is flowing, build on-screen display for:
+   - Recent accuracy (last hour)
+   - Overall accuracy per model
+   - Average time offset
+
+### Future (Lower Priority)
+- **TTS Integration:** Audio responses for guesses. Not essential to core experience, can be added later if desired.
 
 ## Recent Updates
 
