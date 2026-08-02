@@ -8,7 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from src.capture import capture_clock_image
 from src.inference import get_provider, BaseInferenceProvider
-from src.database import get_database, cleanup_database
+from src.database import cleanup_database, get_dev_database, get_prod_database
 
 # Load environment variables from ~/.config/ai-tells-time/.env (secure location)
 config_path = Path.home() / ".config" / "ai-tells-time" / ".env"
@@ -292,10 +292,14 @@ async def main_loop():
 
                 # Record inference results to database
                 reference_time = now  # The time when the image was captured
+                
+                # Known provider families for database categorization
+                known_provider_families = ["openai", "gemini", "claude", "local"]
+                
                 for provider, time_result in results:
                     try:
                         # Parse the time guess to calculate offset
-                        parsed_time = provider.parse_response(time_result)
+                        parsed_time = await provider.parse_response(time_result)
                         offset_minutes = None
                         is_accurate = False
                         inference_failure = False
@@ -323,17 +327,7 @@ async def main_loop():
                                 print(f"⚠️ Could not calculate offset for {provider.name}: {e}")
                         
                         # Determine provider_family from provider name
-                        provider_family = provider.name
-                        if provider.name == "openai":
-                            provider_family = "openai"
-                        elif provider.name == "gemini":
-                            provider_family = "gemini"
-                        elif provider.name == "claude":
-                            provider_family = "claude"
-                        elif provider.name == "local":
-                            provider_family = "local"
-                        else:
-                            provider_family = "other"
+                        provider_family = provider.name if provider.name in known_provider_families else "other"
                         
                         # Save to database
                         db.save_inference_result(
