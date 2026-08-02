@@ -31,6 +31,17 @@ def format_time(dt_str: str) -> str:
         return dt_str
 
 
+def format_full_timestamp(dt_str: str) -> str:
+    """Format datetime string as full ISO timestamp."""
+    if not dt_str:
+        return "N/A"
+    try:
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+    except (ValueError, AttributeError):
+        return dt_str
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="View recent inference results from the database"
@@ -74,7 +85,8 @@ def main():
         query = """
             SELECT id, reference_system_time, model_name, provider_family,
                    time_guess, parsed_time, guessed_offset_minutes, is_accurate,
-                   inference_failure, created_at
+                   inference_failure, created_at, captured_image_filename,
+                   webcam_model, clock_model
             FROM inference_results
             WHERE 1=1
         """
@@ -112,6 +124,7 @@ def main():
         for row in rows:
             id_ = row["id"]
             ref_time = format_time(row["reference_system_time"])
+            full_time = format_full_timestamp(row["reference_system_time"])
             model = row["model_name"]
             provider = row["provider_family"]
             guess = row["time_guess"]
@@ -119,11 +132,20 @@ def main():
             offset = row["guessed_offset_minutes"]
             accurate = "✅" if row["is_accurate"] else "❌"
             failed = "💥" if row["inference_failure"] else "✓"
+            image_file = row["captured_image_filename"] or "N/A"
+            webcam = row["webcam_model"] or "N/A"
+            clock = row["clock_model"] or "N/A"
             
             if args.verbose:
                 print(f"{id_:<6} {ref_time:<8} {model:<30} {provider:<10} {guess:<8} {parsed:<8} {offset:<8} {accurate:<10} {failed:<8}")
             else:
                 print(f"{id_:<6} {ref_time:<8} {model[:28]:<28} {guess:<8} {offset:<8} {accurate:<10}")
+            
+            # Show detailed info (always visible)
+            print(f"       Full time: {full_time}")
+            print(f"       Image: {image_file}")
+            print(f"       Webcam: {webcam}, Clock: {clock}")
+            print()
 
         # Print summary
         print("\n" + "=" * 80)
@@ -139,6 +161,9 @@ def main():
             print(f"   Displayed rows accuracy: {accuracy:.1%} ({accurate_count}/{total})")
         else:
             print(f"   Displayed rows accuracy: N/A (all rows failed)")
+        
+        # Show image filename info
+        print(f"   Total images captured: {len([r for r in rows if r['captured_image_filename']])}/{len(rows)}")
 
     finally:
         cleanup_database()
