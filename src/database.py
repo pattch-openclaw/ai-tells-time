@@ -241,18 +241,32 @@ def get_database() -> Database:
     Get the current database instance.
     
     Uses environment variable DATABASE_ENV to determine which database to use.
-    Defaults to development database if not set.
+    If not set, defaults to prod when running on the Mac Mini (production).
     
     Returns:
         Database instance based on current environment
     """
     import os
-    env = os.getenv("DATABASE_ENV", "dev").lower()
+    
+    # Check explicit DATABASE_ENV setting
+    env = os.getenv("DATABASE_ENV", "").lower()
     
     if env == "prod":
         return get_prod_database()
-    else:
+    elif env == "dev":
         return get_dev_database()
+    
+    # No explicit setting - default to prod on Mac Mini (production)
+    # Check for Mac Mini hostname or presence of production environment indicators
+    import platform
+    hostname = os.getenv("HOSTNAME", "").lower()
+    
+    # Mac Mini typically has hostname containing "mini" or specific naming
+    if "mini" in hostname or "macmini" in hostname:
+        return get_prod_database()
+    
+    # Default to dev for local development (e.g., on laptop/workstation)
+    return get_dev_database()
 
 
 def cleanup_database() -> None:
