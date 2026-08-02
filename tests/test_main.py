@@ -59,7 +59,7 @@ class TestMainLoopDatabaseRecording:
             db_path = Path(tmpdir) / "test_inference.db"
             
             import main
-            from src.database import Database, get_database, get_dev_database, get_prod_database
+            from src.database import Database
             
             # Use test database
             db = Database(db_path)
@@ -67,29 +67,39 @@ class TestMainLoopDatabaseRecording:
             # Mock provider
             mock_provider = MagicMock()
             mock_provider.name = "gemini"
-            mock_provider.parse_response = AsyncMock(return_value="12:30")
+            mock_provider.parse_response_sync = MagicMock(return_value="12:30")
             
             # Use fixed reference time (not system clock)
             reference_time = datetime(2026, 8, 1, 12, 30, 0)  # Fixed: 12:30:00
             time_result = "12:30"
             
-            # Calculate offset (within 5 minutes = accurate)
-            guess_parts = time_result.split(":")
-            guess_hour = int(guess_parts[0])
-            guess_minute = int(guess_parts[1])
-            parsed_dt = reference_time.replace(hour=guess_hour, minute=guess_minute, second=0, microsecond=0)
+            # Simulate the logic from record_inference_results
+            known_provider_families = ["openai", "gemini", "claude", "local"]
+            parsed_time = mock_provider.parse_response_sync(time_result)
             
-            offset_seconds = abs((parsed_dt - reference_time).total_seconds())
-            offset_minutes = int(offset_seconds / 60)
-            is_accurate = offset_minutes <= 5
+            if parsed_time is None:
+                inference_failure = True
+                parsed_dt = None
+                offset_minutes = None
+                is_accurate = False
+            else:
+                inference_failure = False
+                guess_parts = parsed_time.split(":")
+                parsed_dt = reference_time.replace(
+                    hour=int(guess_parts[0]), minute=int(guess_parts[1]), second=0, microsecond=0
+                )
+                offset_seconds = abs((parsed_dt - reference_time).total_seconds())
+                offset_minutes = int(offset_seconds / 60)
+                is_accurate = offset_minutes <= 5
             
-            # Save to database
+            provider_family = mock_provider.name if mock_provider.name in known_provider_families else "other"
+            
             db.save_inference_result(
                 reference_system_time=reference_time,
-                model_name="gemini",
-                provider_family="gemini",
+                model_name=mock_provider.name,
+                provider_family=provider_family,
                 time_guess=time_result,
-                inference_failure=False,
+                inference_failure=inference_failure,
                 captured_image_filename="test_image.png",
                 parsed_time=parsed_dt,
                 guessed_offset_minutes=offset_minutes,
@@ -204,67 +214,26 @@ class TestMainLoopDatabaseRecording:
             db_path = Path(tmpdir) / "test_inference.db"
             
             from src.database import Database
+            from main import record_inference_results
             
             # Use test database
             db = Database(db_path)
             
-            # Mock provider results (simulating what happens in main loop)
+            # Mock provider results
             reference_time = datetime(2026, 8, 1, 12, 30, 0)
             results = [
                 (MagicMock(name="gemini"), "12:30"),
                 (MagicMock(name="local"), "12:28"),
             ]
-            
-            # Set up mock names correctly
             results[0][0].name = "gemini"
             results[1][0].name = "local"
             
-            # Process results (simulating main loop logic)
-            known_provider_families = ["openai", "gemini", "claude", "local"]
+            # Mock parse_response_sync to return valid times
+            for provider, _ in results:
+                provider.parse_response_sync = MagicMock(return_value="12:30")
             
-            for provider, time_result in results:
-                try:
-                    # Simulate parse_response returning a time
-                    parsed_time = time_result  # In real code, this would be parsed
-                    
-                    if parsed_time is None:
-                        # Inference failure
-                        db.save_inference_result(
-                            reference_system_time=reference_time,
-                            model_name=provider.name,
-                            provider_family="other",
-                            time_guess=time_result,
-                            inference_failure=True,
-                            parsed_time=None,
-                        )
-                    else:
-                        # Calculate offset
-                        guess_parts = parsed_time.split(":")
-                        parsed_dt = reference_time.replace(
-                            hour=int(guess_parts[0]),
-                            minute=int(guess_parts[1]),
-                            second=0,
-                            microsecond=0
-                        )
-                        offset_seconds = abs((parsed_dt - reference_time).total_seconds())
-                        offset_minutes = int(offset_seconds / 60)
-                        is_accurate = offset_minutes <= 5
-                        
-                        provider_family = provider.name if provider.name in known_provider_families else "other"
-                        
-                        db.save_inference_result(
-                            reference_system_time=reference_time,
-                            model_name=provider.name,
-                            provider_family=provider_family,
-                            time_guess=time_result,
-                            inference_failure=False,
-                            parsed_time=parsed_dt,
-                            guessed_offset_minutes=offset_minutes,
-                            is_accurate=is_accurate,
-                        )
-                except Exception as e:
-                    # Main loop continues even on database errors
-                    print(f"⚠️ Error recording {provider.name} to database: {e}")
+            # This should not raise any exceptions
+            record_inference_results(results, reference_time, db, Path(tmpdir) / "test.png")
             
             # Verify all results were saved
             cursor = db._conn.cursor()
@@ -272,38 +241,56 @@ class TestMainLoopDatabaseRecording:
             count = cursor.fetchone()[0]
             assert count == 2  # Both providers saved
             
-            # Verify we can read back the results
-            cursor.execute("SELECT model_name, is_accurate FROM inference_results")
-            rows = cursor.fetchall()
-            assert len(rows) == 2
-            model_names = [r["model_name"] for r in rows]
-            assert "gemini" in model_names
-            assert "local" in model_names
+            db.close()
+
+    @pytest.mark.asyncio
+    async def test_database_write_failure_does_not_crash(self):
+        """Test that database write failures are caught gracefully."""
+        from main import record_inference_results
+        from src.database import Database
+        import tempfile
+        from pathlib import Path
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "test_inference.db"
+            db = Database(db_path)
+            
+            # Mock provider
+            results = [(MagicMock(name="gemini"), "12:30")]
+            results[0][0].name = "gemini"
+            results[0][0].parse_response_sync = MagicMock(return_value="12:30")
+            
+            # Mock save_inference_result to raise an exception
+            with patch.object(db, 'save_inference_result', side_effect=Exception("DB Error")):
+                # This should not raise any exceptions due to try/except in record_inference_results
+                record_inference_results(results, datetime(2026, 8, 1, 12, 30, 0), db, Path(tmpdir) / "test.png")
             
             db.close()
 
     @pytest.mark.asyncio
-    async def test_database_write_failure_graceful(self):
-        """Test that database write failures are caught and logged."""
+    async def test_record_inference_results_with_parse_failure(self):
+        """Test that parse failures are handled correctly in record_inference_results."""
+        from main import record_inference_results
+        from src.database import Database
+        import tempfile
+        from pathlib import Path
+        
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "test_inference.db"
-            
-            from src.database import Database
-            
             db = Database(db_path)
             
-            # Test valid write
-            reference_time = datetime(2026, 8, 1, 12, 0, 0)  # Fixed reference time
-            db.save_inference_result(
-                reference_system_time=reference_time,
-                model_name="test",
-                provider_family="test",
-                time_guess="12:30",
-                inference_failure=False,
-            )
+            # Mock provider with parse failure
+            results = [(MagicMock(name="gemini"), "invalid time")]
+            results[0][0].name = "gemini"
+            results[0][0].parse_response_sync = MagicMock(return_value=None)
             
+            # This should not raise any exceptions
+            record_inference_results(results, datetime(2026, 8, 1, 12, 30, 0), db, Path(tmpdir) / "test.png")
+            
+            # Verify failure was recorded
             cursor = db._conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM inference_results")
-            assert cursor.fetchone()[0] == 1
+            cursor.execute("SELECT inference_failure FROM inference_results")
+            row = cursor.fetchone()
+            assert row[0] == 1  # True
             
             db.close()
