@@ -106,20 +106,17 @@ class TestMainLoopDatabaseRecording:
             reference_time = datetime(2026, 8, 1, 12, 0, 0)  # Fixed reference time
             time_result = "invalid time format"
             
-            # Simulate parse failure
-            parsed_time = None
-            inference_failure = True
+            # Mock provider with parse failure
+            mock_provider = MagicMock()
+            mock_provider.name = "gemini"
+            mock_provider.parse_response_sync = MagicMock(return_value=None)
             
-            db.save_inference_result(
-                reference_system_time=reference_time,
-                model_name="gemini",
-                provider_family="gemini",
-                time_guess=time_result,
-                inference_failure=inference_failure,
-                captured_image_filename="test_image.png",
-                parsed_time=None,
-                guessed_offset_minutes=None,
-                is_accurate=False,
+            # Use the actual helper function instead of duplicating its logic
+            main.record_inference_results(
+                [(mock_provider, time_result)],
+                reference_time,
+                db,
+                Path(tmpdir) / "test_image.png"
             )
             
             cursor = db._conn.cursor()
@@ -164,7 +161,10 @@ class TestMainLoopDatabaseRecording:
     @pytest.mark.asyncio
     async def test_provider_family_determination(self):
         """Test provider family determination from provider name."""
-        known_provider_families = ["openai", "gemini", "claude", "local"]
+        import main
+        
+        # Import the actual KNOWN_PROVIDER_FAMILIES from main.py instead of duplicating
+        known_provider_families = main.KNOWN_PROVIDER_FAMILIES
         
         # Known providers
         assert "openai" in known_provider_families

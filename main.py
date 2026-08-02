@@ -23,6 +23,9 @@ OBS_HOST = os.getenv("OBS_WEBSOCKET_HOST", "localhost")
 OBS_PORT = os.getenv("OBS_WEBSOCKET_PORT", "4455")
 OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
 
+# Provider families for classification
+KNOWN_PROVIDER_FAMILIES = ["openai", "gemini", "claude", "local"]
+
 # Image capture settings
 CAPTURE_RESOLUTION = (640, 360)  # (width, height) - 360p for reduced AI costs
 
@@ -76,7 +79,6 @@ def record_inference_results(results, reference_time, db, image_path):
         db: Database instance
         image_path: Path to the captured image
     """
-    known_provider_families = ["openai", "gemini", "claude", "local"]
     
     for provider, time_result in results:
         try:
@@ -109,7 +111,7 @@ def record_inference_results(results, reference_time, db, image_path):
                     print(f"⚠️ Could not calculate offset for {provider.name}: {e}")
 
             # Determine provider_family from provider name
-            provider_family = provider.name if provider.name in known_provider_families else "other"
+            provider_family = provider.name if provider.name in KNOWN_PROVIDER_FAMILIES else "other"
 
             # Save to database
             db.save_inference_result(
