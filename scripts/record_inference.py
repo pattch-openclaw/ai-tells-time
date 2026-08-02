@@ -10,6 +10,7 @@ Usage:
 import argparse
 import sys
 from datetime import datetime, timedelta
+import zoneinfo
 from pathlib import Path
 
 # Add project root to path
@@ -18,10 +19,49 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.database import get_database, cleanup_database, get_dev_database, get_prod_database
 
 
+# Helper function for time offset calculation
+def calculate_time_offset_minutes(ref_hour: int, ref_minute: int, guess_hour: int, guess_minute: int) -> int:
+    """
+    Calculate the minimum absolute time offset in minutes between two times of day.
+    
+    The AI is guessing a time of day (HH:MM), not a full datetime. This function
+    correctly handles the wrap-around through midnight, so the minimum offset
+    is always between 0 and 720 minutes (12 hours).
+    
+    Args:
+        ref_hour: Reference hour (0-23)
+        ref_minute: Reference minute (0-59)
+        guess_hour: Guess hour (0-23)
+        guess_minute: Guess minute (0-59)
+    
+    Returns:
+        Minimum absolute offset in minutes (always >= 0 and <= 720)
+    """
+    # Convert both times to minutes from midnight (0-1439 range)
+    ref_total = ref_hour * 60 + ref_minute
+    guess_total = guess_hour * 60 + guess_minute
+    
+    # Calculate raw difference
+    diff = guess_total - ref_total
+    diff_abs = abs(diff)
+    
+    # The minimum offset is the minimum of the direct difference
+    # and the wrap-around difference (going through midnight).
+    # Since there are 1440 minutes in a day, the wrap-around distance is 1440 - diff_abs
+    offset = min(diff_abs, 1440 - diff_abs)
+    
+    # Defensive assertion: offset should always be in [0, 720]
+    # (max offset is 720 minutes = 12 hours for times 12 hours apart)
+    assert 0 <= offset <= 720, f"Offset {offset} is outside expected range [0, 720]"
+    
+    return offset
+
+
 def parse_time(time_str: str, reference_time: datetime = None) -> datetime:
     """Parse time string in HH:MM format."""
     if reference_time is None:
-        reference_time = datetime.now()
+        # Use PST timezone (America/Los_Angeles) for consistency
+        reference_time = datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
     
     try:
         parts = time_str.split(":")
@@ -89,17 +129,25 @@ def main():
         print("❌ Cannot mark as both accurate and inaccurate")
         return 1
 
-    # Parse times
+    # Parse times (using PST timezone via parse_time)
     try:
-        now = datetime.now()
-        guess_dt = parse_time(args.guess, now)
-        actual_dt = parse_time(args.actual, now) if args.actual else now
+        guess_dt = parse_time(args.guess)
+        actual_dt = parse_time(args.actual) if args.actual else parse_time(datetime.now().strftime("%H:%M"))
     except ValueError as e:
         print(f"❌ {e}")
         return 1
 
     # Calculate offset and accuracy
-    offset_minutes = int(abs((guess_dt - actual_dt).total_seconds() / 60))
+    # Convert both times to minutes from midnight (0-1439 range)
+    actual_total_minutes = actual_dt.hour * 60 + actual_dt.minute
+    guess_total_minutes = guess_dt.hour * 60 + guess_dt.minute
+    
+    # Calculate offset using the helper function
+    offset_minutes = calculate_time_offset_minutes(
+        actual_dt.hour, actual_dt.minute,
+        guess_dt.hour, guess_dt.minute
+    )
+    
     is_accurate = args.is_accurate or (offset_minutes <= 5 and not args.not_accurate)
 
     # Determine provider family from model name

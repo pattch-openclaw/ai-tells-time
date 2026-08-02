@@ -1,7 +1,8 @@
 import asyncio
 import time
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
+import zoneinfo
 import obsws_python as obs
 import os
 from pathlib import Path
@@ -22,6 +23,86 @@ else:
 OBS_HOST = os.getenv("OBS_WEBSOCKET_HOST", "localhost")
 OBS_PORT = os.getenv("OBS_WEBSOCKET_PORT", "4455")
 OBS_PASSWORD = os.getenv("OBS_WEBSOCKET_PASSWORD", "")
+
+# Helper functions for time offset calculation
+def calculate_time_offset_minutes(ref_hour: int, ref_minute: int, guess_hour: int, guess_minute: int) -> int:
+    """
+    Calculate the minimum absolute time offset in minutes between two times of day.
+    
+    The AI is guessing a time of day (HH:MM), not a full datetime. This function
+    correctly handles the wrap-around through midnight, so the minimum offset
+    is always between 0 and 720 minutes (12 hours).
+    
+    Args:
+        ref_hour: Reference hour (0-23)
+        ref_minute: Reference minute (0-59)
+        guess_hour: Guess hour (0-23)
+        guess_minute: Guess minute (0-59)
+    
+    Returns:
+        Minimum absolute offset in minutes (always >= 0 and <= 720)
+    """
+    # Convert both times to minutes from midnight (0-1439 range)
+    ref_total = ref_hour * 60 + ref_minute
+    guess_total = guess_hour * 60 + guess_minute
+    
+    # Calculate raw difference
+    diff = guess_total - ref_total
+    diff_abs = abs(diff)
+    
+    # The minimum offset is the minimum of the direct difference
+    # and the wrap-around difference (going through midnight).
+    # Since there are 1440 minutes in a day, the wrap-around distance is 1440 - diff_abs
+    offset = min(diff_abs, 1440 - diff_abs)
+    
+    # Defensive assertion: offset should always be in [0, 720]
+    # (max offset is 720 minutes = 12 hours for times 12 hours apart)
+    assert 0 <= offset <= 720, f"Offset {offset} is outside expected range [0, 720]"
+    
+    return offset
+
+
+def get_parsed_datetime_for_guess(
+    reference_time: datetime,
+    guess_hour: int,
+    guess_minute: int
+) -> datetime:
+    """
+    Create a datetime for the guessed time that minimizes the offset from reference.
+    
+    Args:
+        reference_time: The reference datetime (timezone-aware or naive)
+        guess_hour: Guess hour (0-23)
+        guess_minute: Guess minute (0-59)
+    
+    Returns:
+        A datetime object representing the guessed time on the appropriate day
+        (previous, same, or next day) to minimize the offset
+    """
+    ref_total = reference_time.hour * 60 + reference_time.minute
+    guess_total = guess_hour * 60 + guess_minute
+    diff = guess_total - ref_total
+    
+    if abs(diff) <= 720:
+        # Direct path is shorter (or equal), use same day
+        parsed_dt = reference_time.replace(
+            hour=guess_hour, minute=guess_minute, second=0, microsecond=0
+        )
+    elif diff > 0:
+        # Wrap-around is shorter and guess is ahead, so use previous day
+        parsed_dt = reference_time.replace(
+            hour=guess_hour, minute=guess_minute, second=0, microsecond=0
+        )
+        parsed_dt = parsed_dt - timedelta(days=1)
+    else:
+        # Wrap-around is shorter and guess is behind, so use next day
+        parsed_dt = reference_time.replace(
+            hour=guess_hour, minute=guess_minute, second=0, microsecond=0
+        )
+        parsed_dt = parsed_dt + timedelta(days=1)
+    
+    return parsed_dt
+
 
 # Provider families for classification
 KNOWN_PROVIDER_FAMILIES = ["openai", "gemini", "claude", "local"]
@@ -95,15 +176,21 @@ async def record_inference_results(results, reference_time, db, image_path):
             else:
                 # Calculate offset from actual reference time
                 try:
-                    # Parse the time string to a datetime object
+                    # Parse the time string to get hour and minute
                     guess_parts = parsed_time.split(":")
                     guess_hour = int(guess_parts[0])
                     guess_minute = int(guess_parts[1])
-                    parsed_dt = reference_time.replace(hour=guess_hour, minute=guess_minute, second=0, microsecond=0)
-
-                    # Calculate offset in minutes (absolute value)
-                    offset_seconds = abs((parsed_dt - reference_time).total_seconds())
-                    offset_minutes = int(offset_seconds / 60)
+                    
+                    # Calculate offset using the helper function
+                    offset_minutes = calculate_time_offset_minutes(
+                        reference_time.hour, reference_time.minute,
+                        guess_hour, guess_minute
+                    )
+                    
+                    # Create the parsed datetime for the guessed time
+                    parsed_dt = get_parsed_datetime_for_guess(
+                        reference_time, guess_hour, guess_minute
+                    )
 
                     # Consider accurate if within +/- 5 minutes
                     is_accurate = offset_minutes <= 5
@@ -303,7 +390,8 @@ async def main_loop():
     while True:
         run_count += 1
         # 1. Capture an image from OBS
-        now = datetime.now()
+        # Use PST timezone (America/Los_Angeles) to match the ReferenceProvider
+        now = datetime.now(zoneinfo.ZoneInfo("America/Los_Angeles"))
         current_time_str = now.strftime("%H:%M:%S")  # Default fallback time
 
         try:
