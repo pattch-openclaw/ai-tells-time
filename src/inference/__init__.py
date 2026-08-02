@@ -487,8 +487,8 @@ class ReferenceProvider(BaseInferenceProvider):
         return now.strftime("%I:%M (PST)")
         
     async def parse_response(self, raw_response: str) -> Optional[str]:
-        # Return as-is since we generated it perfectly
-        return raw_response
+        # Extract just HH:MM from the response, ignoring timezone suffix
+        return extract_time_from_text(raw_response)
         
     async def handle_error(self, error: Exception, attempt: int) -> bool:
         return False
