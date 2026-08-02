@@ -200,6 +200,9 @@ async def record_inference_results(results, reference_time, db, image_path):
             # Determine provider_family from provider name
             provider_family = provider.name if provider.name in KNOWN_PROVIDER_FAMILIES else "other"
 
+            # Extract just the filename from the path for database storage
+            image_filename = image_path.name if image_path else None
+
             # Save to database
             db.save_inference_result(
                 reference_system_time=reference_time,
@@ -207,7 +210,7 @@ async def record_inference_results(results, reference_time, db, image_path):
                 provider_family=provider_family,
                 time_guess=time_result,
                 inference_failure=inference_failure,
-                captured_image_filename=str(image_path),
+                captured_image_filename=image_filename,
                 parsed_time=parsed_dt if parsed_time else None,
                 guessed_offset_minutes=offset_minutes,
                 is_accurate=is_accurate,

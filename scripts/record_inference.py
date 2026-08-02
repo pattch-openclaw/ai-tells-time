@@ -168,6 +168,9 @@ def main():
     db = get_prod_database() if args.prod else get_dev_database()
 
     try:
+        # Extract just the filename if a path was provided
+        image_filename = Path(args.image).name if args.image else None
+        
         # Save the inference result
         result_id = db.save_inference_result(
             reference_system_time=actual_dt,
@@ -175,7 +178,7 @@ def main():
             provider_family=provider,
             time_guess=args.guess,
             inference_failure=False,
-            captured_image_filename=args.image,
+            captured_image_filename=image_filename,
             parsed_time=guess_dt,
             guessed_offset_minutes=offset_minutes,
             is_accurate=is_accurate,
