@@ -18,10 +18,8 @@ async def test_reference_provider_format():
     time_str = await provider.tell_time(Path("dummy.png"))
     assert "(PST)" in time_str
     
-    # Should not have 24h format if > 12
-    # Though difficult to mock datetime easily without freezegun, 
-    # we can just ensure parse_response passes it through
-    assert await provider.parse_response(time_str) == time_str
+    # parse_response should extract just HH:MM, not include (PST)
+    assert await provider.parse_response(time_str) == extract_time_from_text(time_str)
 
 @pytest.mark.asyncio
 async def test_structured_output_parsing():
