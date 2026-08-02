@@ -1,19 +1,126 @@
 """
 Tests for the time offset calculation helper functions.
+
+These tests use parse_time() to get datetime objects, then extract
+hours/minutes to test calculate_time_offset_minutes() with realistic data.
 """
 
 import pytest
 from datetime import datetime, timedelta
 import zoneinfo
 
-# Import helper functions from main.py
+# Import helper functions
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
+class TestTimeOffsetWithParseTime:
+    """Tests using parse_time() + calculate_time_offset_minutes() together."""
+
+    def test_parse_time_and_offset_same_time(self):
+        """Test when reference and guess are the same time using parse_time."""
+        from scripts.record_inference import parse_time
+        from main import calculate_time_offset_minutes
+        reference = parse_time("12:00")
+        guess = parse_time("12:00", reference)
+        offset = calculate_time_offset_minutes(
+            reference.hour, reference.minute,
+            guess.hour, guess.minute
+        )
+        assert offset == 0
+
+    def test_parse_time_and_offset_twelve_hours_apart(self):
+        """Test when diff is 12 hours - should return 720, not 0."""
+        from scripts.record_inference import parse_time
+        from main import calculate_time_offset_minutes
+        reference = parse_time("06:00")
+        guess = parse_time("18:00", reference)
+        offset = calculate_time_offset_minutes(
+            reference.hour, reference.minute,
+            guess.hour, guess.minute
+        )
+        assert offset == 720
+
+    def test_parse_time_and_offset_one_hour_behind(self):
+        """Test when guess is 1 hour behind reference."""
+        from scripts.record_inference import parse_time
+        from main import calculate_time_offset_minutes
+        reference = parse_time("06:00")
+        guess = parse_time("05:00", reference)
+        offset = calculate_time_offset_minutes(
+            reference.hour, reference.minute,
+            guess.hour, guess.minute
+        )
+        assert offset == 60
+
+    def test_parse_time_and_offset_one_hour_ahead(self):
+        """Test when guess is 1 hour ahead of reference."""
+        from scripts.record_inference import parse_time
+        from main import calculate_time_offset_minutes
+        reference = parse_time("06:00")
+        guess = parse_time("07:00", reference)
+        offset = calculate_time_offset_minutes(
+            reference.hour, reference.minute,
+            guess.hour, guess.minute
+        )
+        assert offset == 60
+
+    def test_parse_time_and_offset_cross_midnight_previous_day(self):
+        """Test when guess is on previous day (wrap-around)."""
+        from scripts.record_inference import parse_time
+        from main import calculate_time_offset_minutes
+        # Reference: 00:05, Guess: 23:55 (10 minutes before next day = 10 min offset)
+        reference = parse_time("00:05")
+        guess = parse_time("23:55", reference)
+        offset = calculate_time_offset_minutes(
+            reference.hour, reference.minute,
+            guess.hour, guess.minute
+        )
+        assert offset == 10
+
+    def test_parse_time_and_offset_cross_midnight_next_day(self):
+        """Test when guess is on next day (wrap-around)."""
+        from scripts.record_inference import parse_time
+        from main import calculate_time_offset_minutes
+        # Reference: 23:55, Guess: 00:10 (15 minutes after midnight = 15 min offset)
+        reference = parse_time("23:55")
+        guess = parse_time("00:10", reference)
+        offset = calculate_time_offset_minutes(
+            reference.hour, reference.minute,
+            guess.hour, guess.minute
+        )
+        assert offset == 15
+
+    def test_parse_time_and_offset_with_timezone(self):
+        """Test that parse_time uses PST timezone correctly."""
+        from scripts.record_inference import parse_time
+        from main import calculate_time_offset_minutes
+        reference = parse_time("07:01")
+        guess = parse_time("12:00", reference)
+        # 12:00 - 07:01 = 4 hours 59 minutes = 299 minutes
+        offset = calculate_time_offset_minutes(
+            reference.hour, reference.minute,
+            guess.hour, guess.minute
+        )
+        assert offset == 299
+
+    def test_parse_time_and_offset_midnight_boundary(self):
+        """Test offset calculation around midnight boundary."""
+        from scripts.record_inference import parse_time
+        from main import calculate_time_offset_minutes
+        # Reference: 23:55, Guess: 00:05 (10 minutes across midnight)
+        reference = parse_time("23:55")
+        guess = parse_time("00:05", reference)
+        offset = calculate_time_offset_minutes(
+            reference.hour, reference.minute,
+            guess.hour, guess.minute
+        )
+        assert offset == 10
+
+
 class TestTimeOffsetCalculation:
-    """Tests for calculate_time_offset_minutes helper function."""
+    """Tests for calculate_time_offset_minutes helper function with raw hours/minutes."""
 
     def test_same_time_offset_zero(self):
         """Test when reference and guess are the same time."""
