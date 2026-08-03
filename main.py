@@ -492,7 +492,7 @@ async def main_loop():
         
         # 3. Export stats for OBS Browser Source and update text
         try:
-            stats = export_stats()
+            stats = export_stats(db)
             stats_text = get_stats_text(stats)
             print(f"📊 Stats updated. Overall accuracy: {stats['overall']['accuracy']*100:.1f}%")
             

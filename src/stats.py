@@ -7,10 +7,10 @@ from src.database import get_database
 
 ASSETS_DIR = Path(__file__).parent.parent / "obs-assets"
 
-def export_stats():
+def export_stats(db=None):
     """Export current accuracy stats to JSON for the OBS Browser Source."""
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-    db = get_database()
+    db = db or get_database()
     
     models = db.get_active_models()
     
