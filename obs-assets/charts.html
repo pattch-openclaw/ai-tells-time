@@ -10,79 +10,94 @@
         body {
             margin: 0;
             padding: 15px;
-            /* Transparent background for OBS by default, but a fallback for viewing in browser */
             background-color: rgba(0, 0, 0, 0); 
             color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden; /* Hide scrollbars in OBS */
+            overflow: hidden;
         }
         .dashboard {
             display: flex;
             flex-direction: column;
             gap: 20px;
-            width: 395px; /* Fits exactly into a 425px width OBS source with 15px padding */
-            height: 1050px; /* Fits a 1080px height stream with 15px padding */
-            background: rgba(15, 15, 20, 0.85); /* Dark semi-transparent card */
-            border-radius: 16px;
-            padding: 25px;
+            width: 395px;
+            height: 1050px;
             box-sizing: border-box;
+        }
+        .section {
+            background: rgba(15, 15, 20, 0.85);
+            border-radius: 16px;
+            padding: 20px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
         .header {
             text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
+            padding-bottom: 15px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         h1 {
             margin: 0;
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 600;
             letter-spacing: 1px;
             text-transform: uppercase;
             color: #f0f0f0;
-            line-height: 1.4;
         }
         .overall-stat {
-            font-size: 48px;
+            font-size: 36px;
             font-weight: bold;
-            color: #4ade80; /* Green accent */
-            text-shadow: 0 0 15px rgba(74, 222, 128, 0.4);
-            margin: 15px 0;
+            color: #4ade80;
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);
+            margin: 10px 0;
         }
         .chart-container {
             position: relative;
-            flex-grow: 1;
             width: 100%;
-            min-height: 0; /* Ensures flex container doesn't overflow */
+            min-height: 0;
+        }
+        .chart-container.full-height {
+            height: 600px;
+        }
+        .chart-container.small-height {
+            height: 200px;
         }
     </style>
 </head>
 <body>
 
 <div class="dashboard">
-    <div class="header">
-        <h1>Model Accuracy<br/>(Last 24h)</h1>
-        <div class="overall-stat" id="overall-accuracy">--%</div>
-        <div style="font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">Overall System Accuracy</div>
+    <!-- Accuracy Bar Chart -->
+    <div class="section">
+        <div class="header">
+            <h1>Model Accuracy</h1>
+            <div class="overall-stat" id="overall-accuracy">--%</div>
+            <div style="font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">24-Hour Accuracy by Model</div>
+        </div>
+        <div class="chart-container full-height">
+            <canvas id="accuracyChart"></canvas>
+        </div>
     </div>
     
-    <div class="chart-container">
-        <canvas id="accuracyChart"></canvas>
+    <!-- Offset Over Time Line Chart -->
+    <div class="section">
+        <div class="header">
+            <h1>Time Offsets</h1>
+            <div style="font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">Last Hour - Absolute Offset (minutes)</div>
+        </div>
+        <div class="chart-container small-height">
+            <canvas id="offsetChart"></canvas>
+        </div>
     </div>
 </div>
 
 <script>
-    // Configuration for Chart.js
     Chart.defaults.color = '#e2e8f0';
     Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
     
     let accuracyChart = null;
+    let offsetChart = null;
 
     async function fetchStats() {
         try {
-            // Add cache-buster to ensure we get the latest JSON
             const response = await fetch(`stats.json?t=${new Date().getTime()}`);
             if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
@@ -93,104 +108,160 @@
     }
 
     function updateDashboard(data) {
-        // Update header stat
+        // Update overall accuracy
         const overallPct = (data.overall.accuracy * 100).toFixed(1);
         document.getElementById('overall-accuracy').innerText = `${overallPct}%`;
 
-        // Prepare chart data
+        // Prepare accuracy chart data (24h only - consolidated)
         const models = Object.keys(data.models);
         const labels = models;
-        const data1h = models.map(m => data.models[m]['1h'] * 100);
         const data24h = models.map(m => data.models[m]['24h'] * 100);
-        const dataOverall = models.map(m => data.models[m]['overall'] * 100);
 
         if (!accuracyChart) {
-            // Initialize chart on first load
             const ctx = document.getElementById('accuracyChart').getContext('2d');
             accuracyChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: labels,
-                    datasets: [
-                        {
-                            label: 'Last 1 Hour',
-                            data: data1h,
-                            backgroundColor: 'rgba(244, 63, 94, 0.8)', // Rose
-                            borderColor: 'rgba(244, 63, 94, 1)',
-                            borderWidth: 1,
-                            borderRadius: 4
+                    datasets: [{
+                        label: '24-Hour Accuracy',
+                        data: data24h,
+                        backgroundColor: (context) => {
+                            const value = context.dataset.data[context.dataIndex];
+                            // Color based on accuracy level
+                            if (value >= 50) return 'rgba(74, 222, 128, 0.8)'; // Green
+                            if (value >= 25) return 'rgba(250, 204, 21, 0.8)'; // Yellow
+                            return 'rgba(244, 63, 94, 0.8)'; // Red
                         },
-                        {
-                            label: 'Last 24 Hours',
-                            data: data24h,
-                            backgroundColor: 'rgba(56, 189, 248, 0.8)', // Light Blue
-                            borderColor: 'rgba(56, 189, 248, 1)',
-                            borderWidth: 1,
-                            borderRadius: 4
+                        borderColor: (context) => {
+                            const value = context.dataset.data[context.dataIndex];
+                            if (value >= 50) return 'rgba(74, 222, 128, 1)';
+                            if (value >= 25) return 'rgba(250, 204, 21, 1)';
+                            return 'rgba(244, 63, 94, 1)';
                         },
-                        {
-                            label: 'All Time',
-                            data: dataOverall,
-                            backgroundColor: 'rgba(167, 139, 250, 0.8)', // Purple
-                            borderColor: 'rgba(167, 139, 250, 1)',
-                            borderWidth: 1,
-                            borderRadius: 4
-                        }
-                    ]
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
                 },
                 options: {
-                    indexAxis: 'y', // Makes the bar chart horizontal for narrow vertical layouts
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: {
-                        duration: 1000 // Smooth transition
-                    },
+                    animation: { duration: 500 },
                     scales: {
                         x: {
                             beginAtZero: true,
                             max: 100,
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { callback: (v) => v + '%' }
                         },
                         y: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
-                                }
-                            }
+                            grid: { display: false },
+                            ticks: { font: { size: 12, weight: 'bold' } }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        } else {
+            accuracyChart.data.datasets[0].data = data24h;
+            accuracyChart.update('none'); // 'none' for faster updates
+        }
+
+        // Prepare offset line chart data (last hour)
+        const offsets = data.offsets || {};
+        const offsetModels = Object.keys(offsets);
+        
+        // Get all timestamps and sort them
+        let allTimestamps = new Set();
+        offsetModels.forEach(model => {
+            offsets[model].forEach(point => allTimestamps.add(point.timestamp));
+        });
+        const sortedTimestamps = Array.from(allTimestamps).sort();
+
+        if (!offsetChart) {
+            const ctx = document.getElementById('offsetChart').getContext('2d');
+            offsetChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sortedTimestamps.map(t => t.slice(11, 19)), // Show HH:MM:SS
+                    datasets: offsetModels.map((model, idx) => {
+                        const modelOffsets = offsets[model] || [];
+                        // Create a map for quick timestamp lookup
+                        const offsetMap = {};
+                        modelOffsets.forEach(p => offsetMap[p.timestamp] = p.offset_minutes);
+                        
+                        return {
+                            label: model,
+                            data: sortedTimestamps.map(t => offsetMap[t] ?? null),
+                            borderColor: getChartColor(idx),
+                            backgroundColor: getChartColor(idx, 0.2),
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                            fill: false,
+                            spanGaps: true
+                        };
+                    })
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 300 },
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: 6 }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            title: { display: true, text: 'Minutes Offset' }
                         }
                     },
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                font: {
-                                    size: 13
-                                }
-                            }
+                            labels: { usePointStyle: true, padding: 15 }
                         }
                     }
                 }
             });
         } else {
-            // Update existing chart smoothly
-            accuracyChart.data.labels = labels;
-            accuracyChart.data.datasets[0].data = data1h;
-            accuracyChart.data.datasets[1].data = data24h;
-            accuracyChart.data.datasets[2].data = dataOverall;
-            accuracyChart.update();
+            // Update offset chart data
+            offsetChart.data.labels = sortedTimestamps.map(t => t.slice(11, 19));
+            offsetChart.data.datasets = offsetModels.map((model, idx) => {
+                const modelOffsets = offsets[model] || [];
+                const offsetMap = {};
+                modelOffsets.forEach(p => offsetMap[p.timestamp] = p.offset_minutes);
+                return {
+                    label: model,
+                    data: sortedTimestamps.map(t => offsetMap[t] ?? null),
+                    borderColor: getChartColor(idx),
+                    backgroundColor: getChartColor(idx, 0.2),
+                    tension: 0.3,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    fill: false,
+                    spanGaps: true
+                };
+            });
+            offsetChart.update('none');
         }
+    }
+
+    function getChartColor(index, alpha = 1) {
+        const colors = [
+            `rgba(56, 189, 248, ${alpha})`,   // Light Blue - Gemini
+            `rgba(251, 146, 60, ${alpha})`,   // Orange - OpenAI
+            `rgba(167, 139, 250, ${alpha})`,  // Purple - Claude
+            `rgba(244, 63, 94, ${alpha})`,    // Red - Local
+            `rgba(52, 211, 153, ${alpha})`,   // Emerald - Other
+        ];
+        return colors[index % colors.length];
     }
 
     // Initial fetch
