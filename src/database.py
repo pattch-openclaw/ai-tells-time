@@ -169,6 +169,8 @@ class Database:
         if model_name:
             query += " AND model_name = ?"
             params.append(model_name)
+        else:
+            query += " AND model_name != 'reference'"
             
         cursor.execute(query, params)
         
@@ -180,7 +182,7 @@ class Database:
         """Get a list of all model names that have inference results."""
         cursor = self._conn.cursor()
         cursor.execute(
-            "SELECT DISTINCT model_name FROM inference_results WHERE inference_failure = 0 ORDER BY model_name"
+            "SELECT DISTINCT model_name FROM inference_results WHERE inference_failure = 0 AND model_name != 'reference' ORDER BY model_name"
         )
         return [row["model_name"] for row in cursor.fetchall()]
         
@@ -201,6 +203,8 @@ class Database:
         if model_name:
             query += " AND model_name = ?"
             params.append(model_name)
+        else:
+            query += " AND model_name != 'reference'"
             
         cursor.execute(query, params)
         result = cursor.fetchone()
@@ -237,6 +241,8 @@ class Database:
         if model_name:
             query += " AND model_name = ?"
             params.append(model_name)
+        else:
+            query += " AND model_name != 'reference'"
         
         cursor.execute(query, params)
         result = cursor.fetchone()
