@@ -169,6 +169,9 @@ async def record_inference_results(results, reference_time, db, image_path):
     """
     
     for provider, time_result in results:
+        if provider.name == 'reference':
+            continue
+            
         try:
             # Parse the time guess to calculate offset
             parsed_time = await provider.parse_response(time_result)
