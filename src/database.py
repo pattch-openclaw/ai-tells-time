@@ -18,7 +18,7 @@ class Database:
     def __init__(self, db_path: Path):
         """
         Initialize the database connection.
-        
+
         Args:
             db_path: Path to the SQLite database file
         """
@@ -31,7 +31,7 @@ class Database:
     def _init_db(self) -> None:
         """Initialize the database schema."""
         cursor = self._conn.cursor()
-        
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS inference_results (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,19 +49,19 @@ class Database:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        
+
         # Index for recent accuracy queries (last X hours)
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_reference_time 
+            CREATE INDEX IF NOT EXISTS idx_reference_time
             ON inference_results(reference_system_time)
         """)
-        
+
         # Composite index for accurate/inaccurate filtering with time range
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_accuracy_time 
+            CREATE INDEX IF NOT EXISTS idx_accuracy_time
             ON inference_results(is_accurate, reference_system_time)
         """)
-        
+
         self._conn.commit()
 
     def close(self) -> None:
@@ -85,7 +85,7 @@ class Database:
     ) -> int:
         """
         Save an inference result to the database.
-        
+
         Args:
             reference_system_time: The reference system time when the image was captured
             model_name: The precise model name (e.g., "gemini-1.5-flash")
@@ -98,12 +98,12 @@ class Database:
             is_accurate: Whether guess was within +/- 5 minutes of reference
             webcam_model: Optional webcam model identifier
             clock_model: Optional clock model identifier
-            
+
         Returns:
             The ID of the inserted row
         """
         cursor = self._conn.cursor()
-        
+
         cursor.execute("""
             INSERT INTO inference_results (
                 reference_system_time,
@@ -131,7 +131,7 @@ class Database:
             webcam_model,
             clock_model,
         ))
-        
+
         self._conn.commit()
         return cursor.lastrowid
 
@@ -143,17 +143,17 @@ class Database:
     ) -> float:
         """
         Calculate accuracy rate over the last X hours.
-        
+
         Args:
             hours: Number of hours to look back
             provider_family: Optional filter for provider family
             model_name: Optional filter for specific model name
-            
+
         Returns:
             Accuracy rate as a float (0.0 to 1.0)
         """
         cursor = self._conn.cursor()
-        
+
         query = f"""
             SELECT AVG(is_accurate) as accuracy
             FROM inference_results
@@ -161,19 +161,19 @@ class Database:
               AND inference_failure = 0
         """
         params = []
-        
+
         if provider_family:
             query += " AND provider_family = ?"
             params.append(provider_family)
-            
+
         if model_name:
             query += " AND model_name = ?"
             params.append(model_name)
         else:
             query += " AND model_name != 'reference'"
-            
+
         cursor.execute(query, params)
-        
+
         result = cursor.fetchone()
         return float(result["accuracy"]) if result["accuracy"] is not None else 0.0
 
@@ -185,7 +185,7 @@ class Database:
             "SELECT DISTINCT model_name FROM inference_results WHERE inference_failure = 0 AND model_name != 'reference' ORDER BY model_name"
         )
         return [row["model_name"] for row in cursor.fetchall()]
-        
+
     def get_total_inferences(
         self,
         provider_family: Optional[str] = None,
@@ -195,17 +195,17 @@ class Database:
         cursor = self._conn.cursor()
         query = "SELECT COUNT(*) as total FROM inference_results WHERE inference_failure = 0"
         params = []
-        
+
         if provider_family:
             query += " AND provider_family = ?"
             params.append(provider_family)
-            
+
         if model_name:
             query += " AND model_name = ?"
             params.append(model_name)
         else:
             query += " AND model_name != 'reference'"
-            
+
         cursor.execute(query, params)
         result = cursor.fetchone()
         return result["total"] if result["total"] is not None else 0
@@ -217,7 +217,7 @@ class Database:
     ) -> float:
         """
         Calculate overall accuracy rate.
-        
+
         Args:
             provider_family: Optional filter for provider family
             model_name: Optional filter for specific model name
@@ -249,6 +249,46 @@ class Database:
         
         return float(result["accuracy"]) if result["accuracy"] is not None else 0.0
 
+    def get_offset_over_time(
+        self,
+        hours: int = 1,
+        model_name: Optional[str] = None,
+    ) -> list[dict]:
+        """
+        Get offset data over time for a specific model (or all models).
+
+        Args:
+            hours: Number of hours to look back
+            model_name: Optional filter for specific model name
+            
+        Returns:
+            List of dicts with reference_system_time and guessed_offset_minutes
+        """
+        cursor = self._conn.cursor()
+        
+        query = """
+            SELECT reference_system_time, model_name, guessed_offset_minutes
+            FROM inference_results
+            WHERE reference_system_time > datetime('now', '-{hours} hours')
+              AND guessed_offset_minutes IS NOT NULL
+              AND inference_failure = 0
+        """.format(hours=hours)
+        
+        if model_name:
+            query += " AND model_name = ?"
+            cursor.execute(query, (model_name,))
+        else:
+            cursor.execute(query)
+        
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                "timestamp": row["reference_system_time"],
+                "model_name": row["model_name"],
+                "offset_minutes": row["guessed_offset_minutes"]
+            })
+        return results
+
 
 # Database instances
 _DEV_DB_PATH = Path(__file__).parent.parent.parent / "data" / "dev_inference.db"
@@ -261,7 +301,7 @@ _prod_db: Optional[Database] = None
 def get_dev_database() -> Database:
     """
     Get the development database instance.
-    
+
     Returns:
         Database instance for development
     """
@@ -274,7 +314,7 @@ def get_dev_database() -> Database:
 def get_prod_database() -> Database:
     """
     Get the production database instance.
-    
+
     Returns:
         Database instance for production
     """
@@ -287,32 +327,32 @@ def get_prod_database() -> Database:
 def get_database() -> Database:
     """
     Get the current database instance.
-    
+
     Uses environment variable DATABASE_ENV to determine which database to use.
     If not set, defaults to prod when running on the Mac Mini (production).
-    
+
     Returns:
         Database instance based on current environment
     """
     import os
-    
+
     # Check explicit DATABASE_ENV setting
     env = os.getenv("DATABASE_ENV", "").lower()
-    
+
     if env == "prod":
         return get_prod_database()
     elif env == "dev":
         return get_dev_database()
-    
+
     # No explicit setting - default to prod on Mac Mini (production)
     # Check for Mac Mini hostname or presence of production environment indicators
     import platform
     hostname = os.getenv("HOSTNAME", "").lower()
-    
+
     # Mac Mini typically has hostname containing "mini" or specific naming
     if "mini" in hostname or "macmini" in hostname:
         return get_prod_database()
-    
+
     # Default to dev for local development (e.g., on laptop/workstation)
     return get_dev_database()
 

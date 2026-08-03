@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from datetime import datetime, timezone
 import os
+from collections import defaultdict
 
 from src.database import get_database
 
@@ -23,15 +24,30 @@ def export_stats(db=None):
         "models": {}
     }
     
-    # Optional: fetch 1h, 24h, overall for each model
+    # Fetch 24h accuracy for each model (consolidated from 1h/24h/all)
     for model in models:
         stats["models"][model] = {
-            "1h": db.get_recent_accuracy(hours=1, model_name=model),
             "24h": db.get_recent_accuracy(hours=24, model_name=model),
-            "overall": db.get_overall_accuracy(model_name=model),
             "total": db.get_total_inferences(model_name=model)
         }
         
+    # Fetch offset data for the last hour (for line chart)
+    offset_data = db.get_offset_over_time(hours=1)
+    
+    # Group offsets by model
+    offsets_by_model = defaultdict(list)
+    for item in offset_data:
+        # Convert ISO format timestamp to something JSON can handle
+        ts = item["timestamp"]
+        if isinstance(ts, str):
+            ts = ts
+        offsets_by_model[item["model_name"]].append({
+            "timestamp": ts,
+            "offset_minutes": item["offset_minutes"]
+        })
+    
+    stats["offsets"] = dict(offsets_by_model)
+    
     # Write to file atomically (write to temp, then rename)
     stats_file = ASSETS_DIR / "stats.json"
     temp_file = ASSETS_DIR / "stats.json.tmp"
