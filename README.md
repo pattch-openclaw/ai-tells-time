@@ -19,12 +19,15 @@ Database integration is complete and working end-to-end in the main loop. Infere
 - ✅ Accuracy calculated at inference time (±5 minutes threshold)
 - ✅ `view_recent.py` script to visualize results with full timestamps and metadata
 - ✅ `cleanup --clear-db` option to reset database for fresh starts
+- ✅ Real-time OBS HTML dashboard (`charts.html`) displaying model accuracy via Browser Source
+- ✅ Websocket text source updates for accuracy summaries
+- ✅ Automatically excludes the reference clock from stats to track true AI performance
 
 **What's Next:**
-- **On-Stream Display**: Build visuals to show accuracy metrics on stream:
-  - Recent accuracy (last hour)
-  - Overall accuracy per model
-  - Average time offset
+- **Enhanced Accuracy Visualizations**: 
+  - Add a line chart (as opposed to the current bar charts) showing the time offset over time for each model, potentially smoothed.
+  - Change the coloring of different models when they're accurate vs. inaccurate to make it visually clear which models (if any) are currently accurate.
+  - Replace the current raw text streams with a second, styled HTML source.
 
 ### Future (Lower Priority)
 - **TTS Integration:** Audio responses for guesses. While it would add character to the stream, it's not essential to the core viewing experience. This can be revisited later if desired.
