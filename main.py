@@ -169,6 +169,11 @@ async def record_inference_results(results, reference_time, db, image_path):
     """
     
     for provider, time_result in results:
+        # Skip recording the reference provider as its own inference row since the reference 
+        # time is already recorded as the 'reference_system_time' column for all other rows.
+        if provider.name == 'reference':
+            continue
+            
         try:
             # Parse the time guess to calculate offset
             parsed_time = await provider.parse_response(time_result)
