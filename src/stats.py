@@ -24,9 +24,10 @@ def export_stats(db=None):
         "models": {}
     }
     
-    # Fetch 24h accuracy for each model (consolidated from 1h/24h/all)
+    # Fetch 1h and 24h accuracy for each model
     for model in models:
         stats["models"][model] = {
+            "1h": db.get_recent_accuracy(hours=1, model_name=model),
             "24h": db.get_recent_accuracy(hours=24, model_name=model),
             "total": db.get_total_inferences(model_name=model)
         }
