@@ -157,7 +157,7 @@ class Database:
         query = f"""
             SELECT AVG(is_accurate) as accuracy
             FROM inference_results
-            WHERE reference_system_time > datetime('now', '-{hours} hours')
+            WHERE datetime(substr(reference_system_time, 1, 19)) > datetime('now', '-{hours} hours')
               AND inference_failure = 0
         """
         params = []
@@ -266,13 +266,15 @@ class Database:
         """
         cursor = self._conn.cursor()
         
-        query = """
+        # Normalize timestamps to comparable format for SQLite datetime comparison
+        # The stored timestamps are ISO format with timezone, so we need to handle this properly
+        query = f"""
             SELECT reference_system_time, model_name, guessed_offset_minutes
             FROM inference_results
-            WHERE reference_system_time > datetime('now', '-{hours} hours')
+            WHERE datetime(substr(reference_system_time, 1, 19)) > datetime('now', '-{hours} hours')
               AND guessed_offset_minutes IS NOT NULL
               AND inference_failure = 0
-        """.format(hours=hours)
+        """
         
         if model_name:
             query += " AND model_name = ?"

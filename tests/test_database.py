@@ -5,7 +5,7 @@ Tests for the database module.
 import pytest
 import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from src.database import Database, cleanup_database
 
 
@@ -187,3 +187,78 @@ def test_model_filter(setup_test_db):
     # Verify filtering by specific model works
     flash_accuracy = db.get_overall_accuracy(model_name="gemini-1.5-flash")
     assert flash_accuracy == 1.0
+
+
+def test_time_based_filtering_with_iso_timestamps(setup_test_db):
+    """Test that time-based filtering works correctly with ISO-format timestamps."""
+    db = setup_test_db
+    now = datetime.now(timezone.utc)
+    
+    # Save a record from 30 minutes ago (should be within 1 hour)
+    db.save_inference_result(
+        reference_system_time=now - timedelta(minutes=30),
+        model_name="test-model",
+        provider_family="test",
+        time_guess="12:00",
+        inference_failure=False,
+        guessed_offset_minutes=5,
+        is_accurate=True,
+    )
+    
+    # Save a record from 2 hours ago (should NOT be within 1 hour)
+    db.save_inference_result(
+        reference_system_time=now - timedelta(hours=2),
+        model_name="test-model",
+        provider_family="test",
+        time_guess="12:00",
+        inference_failure=False,
+        guessed_offset_minutes=5,
+        is_accurate=True,
+    )
+    
+    # Verify 1-hour filtering works (should only return 30-min record)
+    accuracy_1h = db.get_recent_accuracy(hours=1)
+    assert accuracy_1h == pytest.approx(1.0)  # Only the recent record is counted
+    
+    offsets_1h = db.get_offset_over_time(hours=1)
+    assert len(offsets_1h) == 1  # Only 1 record within 1 hour
+    
+    # Verify 3-hour filtering works (should return both records)
+    accuracy_3h = db.get_recent_accuracy(hours=3)
+    assert accuracy_3h == pytest.approx(1.0)  # Both records are accurate
+    
+    offsets_3h = db.get_offset_over_time(hours=3)
+    assert len(offsets_3h) == 2  # Both records within 3 hours
+
+
+def test_time_based_filtering_excludes_reference_model(setup_test_db):
+    """Test that reference model is excluded from accuracy calculations."""
+    db = setup_test_db
+    now = datetime.now()
+    
+    # Save a regular model result
+    db.save_inference_result(
+        reference_system_time=now,
+        model_name="gemini-1.5-flash",
+        provider_family="gemini",
+        time_guess="12:00",
+        inference_failure=False,
+        guessed_offset_minutes=0,
+        is_accurate=True,
+    )
+    
+    # Save a reference model result
+    db.save_inference_result(
+        reference_system_time=now,
+        model_name="reference",
+        provider_family="reference",
+        time_guess="12:00",
+        inference_failure=False,
+        guessed_offset_minutes=0,
+        is_accurate=True,
+    )
+    
+    # Verify reference model is excluded from overall accuracy
+    accuracy = db.get_overall_accuracy()
+    assert accuracy == 1.0  # Only the gemini result is counted
+    assert db.get_total_inferences() == 1  # Only 1 non-reference inference
