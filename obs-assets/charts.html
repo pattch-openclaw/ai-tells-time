@@ -169,6 +169,8 @@
                 }
             });
         } else {
+            // Update chart data and labels (in case models changed)
+            accuracyChart.data.labels = labels;
             accuracyChart.data.datasets[0].data = data1h;
             accuracyChart.data.datasets[1].data = data24h;
             accuracyChart.update('none');
