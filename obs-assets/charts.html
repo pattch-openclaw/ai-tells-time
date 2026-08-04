@@ -65,7 +65,18 @@
 <body>
 
 <div class="dashboard">
-    <!-- Accuracy Bar Chart -->
+    <!-- Offset Over Time Line Chart (Top) -->
+    <div class="section">
+        <div class="header">
+            <h1>Time Offsets</h1>
+            <div style="font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">Last Hour - Absolute Offset (minutes)</div>
+        </div>
+        <div class="chart-container line-chart">
+            <canvas id="offsetChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Accuracy Bar Chart (Bottom) -->
     <div class="section">
         <div class="header">
             <h1>Model Accuracy</h1>
@@ -74,17 +85,6 @@
         </div>
         <div class="chart-container bar-chart">
             <canvas id="accuracyChart"></canvas>
-        </div>
-    </div>
-    
-    <!-- Offset Over Time Line Chart -->
-    <div class="section">
-        <div class="header">
-            <h1>Time Offsets</h1>
-            <div style="font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">Last Hour - Absolute Offset (minutes)</div>
-        </div>
-        <div class="chart-container line-chart">
-            <canvas id="offsetChart"></canvas>
         </div>
     </div>
 </div>
