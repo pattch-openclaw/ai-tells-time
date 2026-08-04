@@ -54,37 +54,37 @@
             width: 100%;
             min-height: 0;
         }
-        .chart-container.full-height {
-            height: 600px;
+        .chart-container.bar-chart {
+            height: 350px;
         }
-        .chart-container.small-height {
-            height: 200px;
+        .chart-container.line-chart {
+            height: 400px;
         }
     </style>
 </head>
 <body>
 
 <div class="dashboard">
-    <!-- Accuracy Bar Chart -->
-    <div class="section">
-        <div class="header">
-            <h1>Model Accuracy</h1>
-            <div class="overall-stat" id="overall-accuracy">--%</div>
-            <div style="font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">24-Hour Accuracy by Model</div>
-        </div>
-        <div class="chart-container full-height">
-            <canvas id="accuracyChart"></canvas>
-        </div>
-    </div>
-    
-    <!-- Offset Over Time Line Chart -->
+    <!-- Offset Over Time Line Chart (Top) -->
     <div class="section">
         <div class="header">
             <h1>Time Offsets</h1>
             <div style="font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">Last Hour - Absolute Offset (minutes)</div>
         </div>
-        <div class="chart-container small-height">
+        <div class="chart-container line-chart">
             <canvas id="offsetChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Accuracy Bar Chart (Bottom) -->
+    <div class="section">
+        <div class="header">
+            <h1>Model Accuracy</h1>
+            <div class="overall-stat" id="overall-accuracy">--%</div>
+            <div style="font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">1h vs 24h Accuracy by Model</div>
+        </div>
+        <div class="chart-container bar-chart">
+            <canvas id="accuracyChart"></canvas>
         </div>
     </div>
 </div>
@@ -112,9 +112,10 @@
         const overallPct = (data.overall.accuracy * 100).toFixed(1);
         document.getElementById('overall-accuracy').innerText = `${overallPct}%`;
 
-        // Prepare accuracy chart data (24h only - consolidated)
+        // Prepare accuracy chart data (1h and 24h)
         const models = Object.keys(data.models);
         const labels = models;
+        const data1h = models.map(m => data.models[m]['1h'] * 100);
         const data24h = models.map(m => data.models[m]['24h'] * 100);
 
         if (!accuracyChart) {
@@ -123,25 +124,24 @@
                 type: 'bar',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: '24-Hour Accuracy',
-                        data: data24h,
-                        backgroundColor: (context) => {
-                            const value = context.dataset.data[context.dataIndex];
-                            // Color based on accuracy level
-                            if (value >= 50) return 'rgba(74, 222, 128, 0.8)'; // Green
-                            if (value >= 25) return 'rgba(250, 204, 21, 0.8)'; // Yellow
-                            return 'rgba(244, 63, 94, 0.8)'; // Red
+                    datasets: [
+                        {
+                            label: 'Last 1 Hour',
+                            data: data1h,
+                            backgroundColor: 'rgba(251, 146, 60, 0.8)', // Orange
+                            borderColor: 'rgba(251, 146, 60, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
                         },
-                        borderColor: (context) => {
-                            const value = context.dataset.data[context.dataIndex];
-                            if (value >= 50) return 'rgba(74, 222, 128, 1)';
-                            if (value >= 25) return 'rgba(250, 204, 21, 1)';
-                            return 'rgba(244, 63, 94, 1)';
-                        },
-                        borderWidth: 1,
-                        borderRadius: 4
-                    }]
+                        {
+                            label: 'Last 24 Hours',
+                            data: data24h,
+                            backgroundColor: 'rgba(56, 189, 248, 0.8)', // Light Blue
+                            borderColor: 'rgba(56, 189, 248, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }
+                    ]
                 },
                 options: {
                     indexAxis: 'y',
@@ -161,13 +161,17 @@
                         }
                     },
                     plugins: {
-                        legend: { display: false }
+                        legend: {
+                            position: 'bottom',
+                            labels: { usePointStyle: true, padding: 20 }
+                        }
                     }
                 }
             });
         } else {
-            accuracyChart.data.datasets[0].data = data24h;
-            accuracyChart.update('none'); // 'none' for faster updates
+            accuracyChart.data.datasets[0].data = data1h;
+            accuracyChart.data.datasets[1].data = data24h;
+            accuracyChart.update('none');
         }
 
         // Prepare offset line chart data (last hour)
