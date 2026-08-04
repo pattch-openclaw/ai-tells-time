@@ -3,10 +3,14 @@ from pathlib import Path
 from datetime import datetime, timezone
 import os
 from collections import defaultdict
+from zoneinfo import ZoneInfo
 
 from src.database import get_database
 
 ASSETS_DIR = Path(__file__).parent.parent / "obs-assets"
+
+# Use PST timezone for consistent display
+PST = ZoneInfo("America/Los_Angeles")
 
 def export_stats(db=None):
     """Export current accuracy stats to JSON for the OBS Browser Source."""
@@ -35,13 +39,18 @@ def export_stats(db=None):
     # Fetch offset data for the last hour (for line chart)
     offset_data = db.get_offset_over_time(hours=1)
     
-    # Group offsets by model
+    # Group offsets by model with PST timestamps in 12-hour format
     offsets_by_model = defaultdict(list)
     for item in offset_data:
-        # Convert ISO format timestamp to something JSON can handle
+        # Parse the UTC timestamp and convert to PST
         ts = item["timestamp"]
         if isinstance(ts, str):
-            ts = ts
+            # Parse ISO format timestamp (assumes UTC)
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            # Convert to PST
+            dt_pst = dt.astimezone(PST)
+            # Format as 12-hour time (e.g., "2:30 PM")
+            ts = dt_pst.strftime("%I:%M %p")
         offsets_by_model[item["model_name"]].append({
             "timestamp": ts,
             "offset_minutes": item["offset_minutes"]
