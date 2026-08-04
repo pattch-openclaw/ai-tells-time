@@ -108,6 +108,9 @@
     }
 
     function updateDashboard(data) {
+        // Debug logging
+        console.log('DEBUG: Received stats data:', data);
+        
         // Update overall accuracy
         const overallPct = (data.overall.accuracy * 100).toFixed(1);
         document.getElementById('overall-accuracy').innerText = `${overallPct}%`;
@@ -117,6 +120,10 @@
         const labels = models;
         const data1h = models.map(m => data.models[m]['1h'] * 100);
         const data24h = models.map(m => data.models[m]['24h'] * 100);
+        
+        console.log('DEBUG: Models:', models);
+        console.log('DEBUG: data1h:', data1h);
+        console.log('DEBUG: data24h:', data24h);
 
         if (!accuracyChart) {
             const ctx = document.getElementById('accuracyChart').getContext('2d');
@@ -170,6 +177,8 @@
             });
         } else {
             // Update chart data and labels (in case models changed)
+            console.log('DEBUG: Updating existing chart');
+            console.log('DEBUG: New labels:', labels);
             accuracyChart.data.labels = labels;
             accuracyChart.data.datasets[0].data = data1h;
             accuracyChart.data.datasets[1].data = data24h;
