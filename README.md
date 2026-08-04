@@ -160,6 +160,22 @@ For testing without API keys, only the OBS variables are required. Gemini integr
 
 **Important:** OBS and this application run on a separate Mac Mini (not this development machine). The Mac Mini serves as both the application runtime and GitHub Actions self-hosted runner.
 
+### Database Selection
+
+The application uses SQLite for storing inference results. By default, it uses the **development database** (`data/dev_inference.db`) for local testing. To use the **production database** (on the Mac Mini), you must run with the `--prod` flag:
+
+```bash
+# Development (default - uses dev_inference.db)
+uv run main.py
+uv run cleanup
+
+# Production (uses prod_inference.db on Mac Mini)
+uv run main.py --prod
+uv run cleanup --clear-db --prod
+```
+
+**Important:** The stats export (for the OBS Browser Source charts) always uses the production database. When testing locally, run `uv run cleanup --clear-db --prod` to clear production data, then `uv run main.py --prod` to record to production.
+
 ### Branch Strategy
 - `main` **Branch:** The production branch. Any code pushed here is automatically pulled by the Mac Mini and executed live on the stream.
 - `dev` **Branch:** The active development branch. Use this for iterating on features (like SQLite integration or TTS) without risking the live stream. Pushes to this branch *do not* trigger the deployment action on the Mac Mini.

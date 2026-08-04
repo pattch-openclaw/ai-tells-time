@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
-from src.database import get_database
+from src.database import get_prod_database
 
 ASSETS_DIR = Path(__file__).parent.parent / "obs-assets"
 
@@ -15,7 +15,8 @@ PST = ZoneInfo("America/Los_Angeles")
 def export_stats(db=None):
     """Export current accuracy stats to JSON for the OBS Browser Source."""
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-    db = db or get_database()
+    # Always use production database - this matches what main.py uses with --prod
+    db = db or get_prod_database()
     
     models = db.get_active_models()
     
