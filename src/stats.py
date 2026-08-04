@@ -19,6 +19,9 @@ def export_stats(db=None):
     
     models = db.get_active_models()
     
+    # Debug logging
+    print(f"DEBUG: get_active_models returned: {models}")
+    
     stats = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "overall": {
@@ -30,10 +33,16 @@ def export_stats(db=None):
     
     # Fetch 1h and 24h accuracy for each model
     for model in models:
+        accuracy_1h = db.get_recent_accuracy(hours=1, model_name=model)
+        accuracy_24h = db.get_recent_accuracy(hours=24, model_name=model)
+        total = db.get_total_inferences(model_name=model)
+        
+        print(f"DEBUG: Model '{model}' - 1h: {accuracy_1h}, 24h: {accuracy_24h}, total: {total}")
+        
         stats["models"][model] = {
-            "1h": db.get_recent_accuracy(hours=1, model_name=model),
-            "24h": db.get_recent_accuracy(hours=24, model_name=model),
-            "total": db.get_total_inferences(model_name=model)
+            "1h": accuracy_1h,
+            "24h": accuracy_24h,
+            "total": total
         }
         
     # Fetch offset data for the last hour (for line chart)
