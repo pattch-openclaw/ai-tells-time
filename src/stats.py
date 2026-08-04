@@ -68,7 +68,7 @@ def get_stats_text(stats) -> str:
     text += "MODELS:\n"
     
     for model, m_stats in stats["models"].items():
-        pct = m_stats["overall"] * 100
+        pct = m_stats["24h"] * 100
         total = m_stats["total"]
         pct_1h = m_stats["1h"] * 100
         text += f"• {model}: {pct:.1f}% ({total}) [1h: {pct_1h:.1f}%]\n"
