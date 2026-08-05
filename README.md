@@ -7,12 +7,13 @@ The stream broadcasts a clock. Once per minute, a still image of the clock is fe
 
 A key design philosophy of this project is that **AI hallucinations are a feature, not a bug.** The more they struggle to read a simple analog clock, the funnier the stream.
 
-## Current Priority: Accuracy Tracking & Display
+## Current Priority: Completed ✅
 
-### 🎯 Main Focus: Accuracy Metrics Display
-**Priority: Highest**
+### Accuracy Metrics Display (COMPLETE)
 
-Database integration is complete and working end-to-end in the main loop. Inference results are now being recorded to SQLite with accuracy calculations.
+**Status: LIVE ON STREAM** 🎉
+
+The accuracy tracking and display system is fully operational and visible on the live stream. Inference results are recorded to SQLite and displayed in real-time via OBS Browser Source.
 
 **What's Done:**
 - ✅ Main loop records inference results to SQLite
@@ -21,9 +22,12 @@ Database integration is complete and working end-to-end in the main loop. Infere
 - ✅ `cleanup --clear-db` option to reset database for fresh starts
 - ✅ Real-time OBS HTML dashboard (`charts.html`) displaying accuracy metrics via Browser Source
 - ✅ **Line chart (inaccuracy chart):** Shows how many minutes each model's guess was off by over the last hour (lower is better, PST timestamps in 12-hour format)
-- ✅ **Bar charts:** Show 1h and 24h accuracy by model
+- ✅ **Bar charts:** Show 1h and 24h accuracy by model (horizontal bars with 1h in orange, 24h in light blue, sorted alphabetically)
 - ✅ Websocket text source updates for accuracy summaries
 - ✅ Automatically excludes the reference clock from stats to track true AI performance
+
+**Live Stream Display:**
+The OBS Browser Source shows both bar charts (1h and 24h accuracy per provider) and the line chart (guess inaccuracy in minutes per provider over the last hour) simultaneously on the live stream.
 
 ### Chart Details
 
@@ -45,6 +49,7 @@ The OBS browser source displays two types of charts:
 
 ### Future (Lower Priority)
 - **TTS Integration:** Audio responses for guesses. While it would add character to the stream, it's not essential to the core viewing experience. This can be revisited later if desired.
+- **Additional Visuals:** Further refinements to the accuracy dashboard (e.g., ranking indicators, more granular time windows) if desired.
 
 ## Goals
 *   Stream simultaneously to Twitch and YouTube.
@@ -406,8 +411,7 @@ The OBS WebSocket connection and image capture are fully functional:
 - ✅ AI API integration (OpenAI, Anthropic, Gemini) - implemented
 - ✅ SQLite database integration (schema + queries) - implemented
 - ✅ Database cleanup with `uv run cleanup --clear-db` - implemented
-- ✅ Accuracy tracking and display via `view_recent.py` - implemented
-- ⏳ Accuracy metrics on stream display - in progress (Priority 1)
+- ✅ **On-stream accuracy display via OBS Browser Source - COMPLETE** 🎉
 
 ### Image Capture Workflow (Verified)
 
@@ -425,25 +429,15 @@ The capture script successfully:
 
 Run with: `uv run capture`
 
-### Next Steps
-- **Current Focus: Accuracy Metrics Display**
-  Give viewers a broader sense of model performance over time. A guess will be considered "accurate" if within **+/- 5 minutes** of the actual current time.
-  
-  **What's Done:**
-  - ✅ Main loop records inference results to SQLite
-  - ✅ Accuracy calculated at inference time (±5 minutes threshold)
-  - ✅ `view_recent.py` script to visualize results with full timestamps and metadata
-  - ✅ `cleanup --clear-db` option to reset database for fresh starts
-  
-  **What's Next:**
-  - **On-Stream Display**: Build visuals to show accuracy metrics on stream:
-    - Recent accuracy (last hour)
-    - Overall accuracy per model
-    - Average time offset
-  
-  The SQLite database already has the schema and queries in place to support this - now we need to build the on-screen display logic.
+### ✅ On-Stream Accuracy Display (COMPLETE)
 
-- (Lower Priority) Add TTS for audio responses
+The accuracy metrics are now live on stream via OBS Browser Source:
+- ✅ **Line chart (inaccuracy over last hour):** Shows how many minutes each model's guess was off by (lower is better, PST timestamps in 12-hour format)
+- ✅ **Bar charts (1h and 24h accuracy by model):** Horizontal bars with 1h in orange, 24h in light blue, sorted alphabetically
+- ✅ Real-time websocket updates to the OBS browser source
+- ✅ Automatically excludes the reference clock from stats to track true AI performance
+
+**Live Status:** The charts are visible on the live stream at all times, providing real-time feedback on AI model accuracy as they guess the time every minute.
 
 ## Development Practices
 
