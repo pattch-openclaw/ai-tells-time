@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tells Time - Inference Results</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0); 
+            color: #ffffff;
+            font-family: 'Futura', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            width: 425px;
+            height: 1080px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Title Section */
+        .title-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .ai-tells-time {
+            font-family: 'Futura', 'Arial', sans-serif;
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 500;
+        }
+
+        /* Last Guess Section */
+        .last-guess-section {
+            background: rgba(15, 15, 20, 0.9);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-header {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #d1d5db;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timestamp {
+            font-size: 11px;
+            color: #6b7280;
+            font-family: monospace;
+        }
+
+        /* Model Results - Stylized */
+        .model-result {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .model-result:last-child {
+            border-bottom: none;
+        }
+
+        .model-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .model-name {
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Futura', 'Arial', sans-serif;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+        }
+
+        .model-detail {
+            font-size: 11px;
+            color: #9ca3af;
+            font-family: monospace;
+        }
+
+        .model-accuracy {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .accuracy-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .accuracy-text {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .accuracy-bar-bg {
+            width: 60px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .accuracy-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .accuracy-check {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        /* Provider Details Section */
+        .provider-details {
+            background: rgba(15, 15, 20, 0.9);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .provider-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .provider-item:last-child {
+            border-bottom: none;
+        }
+
+        .provider-name {
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'Futura', 'Arial', sans-serif;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+        }
+
+        .provider-model {
+            font-size: 11px;
+            color: #9ca3af;
+            font-family: monospace;
+            text-align: right;
+            max-width: 220px;
+            word-break: break-all;
+        }
+
+        /* Color classes */
+        .color-gemini { color: #56ccf2; }
+        .color-openai { color: #10a37f; }
+        .color-anthropic { color: #d97706; }
+        .color-local { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Title -->
+        <div class="title-section">
+            <div class="ai-tells-time">AI Tells Time</div>
+            <div class="subtitle">Live inference results</div>
+        </div>
+
+        <!-- Last Guess Section -->
+        <div class="last-guess-section">
+            <div class="section-header">
+                <span>Last Guess</span>
+                <span class="timestamp" id="last-guess-time">--:--:--</span>
+            </div>
+            
+            <div id="model-results">
+                <!-- Model results will be populated here -->
+            </div>
+        </div>
+
+        <!-- Provider Details Section -->
+        <div class="provider-details">
+            <div class="section-header">
+                <span>Provider Details</span>
+            </div>
+            
+            <div id="provider-details">
+                <!-- Provider details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchInferenceData() {
+            try {
+                const response = await fetch(`last-guess.json?t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error('Error fetching inference data:', error);
+                // Show placeholder data for testing
+                showPlaceholderData();
+            }
+        }
+
+        function showPlaceholderData() {
+            const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+            document.getElementById('last-guess-time').innerText = now;
+
+            const placeholderResults = [
+                { name: 'Gemini 2.5 Flash', accuracy: 0.75, detail: 'gemini-2.5-flash' },
+                { name: 'GPT-4o Mini', accuracy: 0.62, detail: 'gpt-4o-mini' },
+                { name: 'Claude Haiku 4.5', accuracy: 0.58, detail: 'claude-3-5-haiku' },
+                { name: 'Local Model', accuracy: 0.42, detail: 'qwen2.5vl:7b' }
+            ];
+
+            renderModelResults(placeholderResults);
+
+            const placeholderProviders = [
+                { name: 'Gemini', model: 'gemini-2.5-flash' },
+                { name: 'OpenAI', model: 'gpt-4o-mini' },
+                { name: 'Anthropic', model: 'claude-3-5-haiku' },
+                { name: 'Local', model: 'qwen2.5vl:7b' }
+            ];
+
+            renderProviderDetails(placeholderProviders);
+        }
+
+        function renderModelResults(results) {
+            const container = document.getElementById('model-results');
+            container.innerHTML = results.map(result => {
+                const accuracyPct = Math.round(result.accuracy * 100);
+                const barWidth = Math.max(10, Math.min(100, accuracyPct));
+                const isAccurate = accuracyPct >= 50;
+                
+                return `
+                    <div class="model-result">
+                        <div class="model-info">
+                            <span class="model-name color-${result.color || 'local'}">${result.name}</span>
+                            <span class="model-detail">${result.detail}</span>
+                        </div>
+                        <div class="model-accuracy">
+                            <div class="accuracy-bar">
+                                <span class="accuracy-text">${accuracyPct}%</span>
+                                <div class="accuracy-bar-bg">
+                                    <div class="accuracy-bar-fill" style="width: ${barWidth}%; background: ${isAccurate ? '#4ade80' : '#f87171'}"></div>
+                                </div>
+                            </div>
+                            <span class="accuracy-check">${isAccurate ? '✅' : '❌'}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderProviderDetails(providers) {
+            const container = document.getElementById('provider-details');
+            container.innerHTML = providers.map(provider => {
+                return `
+                    <div class="provider-item">
+                        <span class="provider-name color-${getColorClass(provider.name)}">${provider.name}</span>
+                        <span class="provider-model">${provider.model}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getColorClass(name) {
+            const colorMap = {
+                'Gemini': 'gemini',
+                'OpenAI': 'openai',
+                'Anthropic': 'anthropic',
+                'Local': 'local'
+            };
+            return colorMap[name] || 'local';
+        }
+
+        function updateDashboard(data) {
+            // Update timestamp
+            const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString('en-US', { hour12: false }) : new Date().toLocaleTimeString('en-US', { hour12: false });
+            document.getElementById('last-guess-time').innerText = timestamp;
+
+            // Render model results
+            if (data.models && data.models.length > 0) {
+                renderModelResults(data.models);
+            } else {
+                renderModelResults([]);
+            }
+
+            // Render provider details
+            if (data.providers && data.providers.length > 0) {
+                renderProviderDetails(data.providers);
+            } else {
+                renderProviderDetails([]);
+            }
+        }
+
+        // Initial fetch
+        fetchInferenceData();
+
+        // Poll every 10 seconds for updates
+        setInterval(fetchInferenceData, 10000);
+    </script>
+</body>
+</html>

@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from src.capture import capture_clock_image
 from src.inference import get_provider, BaseInferenceProvider
 from src.database import cleanup_database, get_dev_database, get_prod_database, get_database
-from src.stats import export_stats, get_stats_text
+from src.stats import export_stats, get_stats_text, export_inference_results
 
 # Load environment variables from ~/.config/ai-tells-time/.env (secure location)
 config_path = Path.home() / ".config" / "ai-tells-time" / ".env"
@@ -505,8 +505,15 @@ async def main_loop():
                 await update_obs_text(client, "text_stats", stats_text)
         except Exception as e:
             print(f"⚠️ Failed to export stats: {e}")
+        
+        # 4. Export inference results for inference-results.html OBS Browser Source
+        try:
+            inference_data = export_inference_results(db)
+            print(f"📊 Inference results exported. {len(inference_data['models'])} models updated.")
+        except Exception as e:
+            print(f"⚠️ Failed to export inference results: {e}")
 
-        # 4. Calculate sleep time to align exactly with the top of the next minute
+        # 5. Calculate sleep time to align exactly with the top of the next minute
         current_seconds = time.time() % 60
         sleep_time = 60 - current_seconds
 

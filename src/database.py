@@ -291,10 +291,54 @@ class Database:
             })
         return results
 
+    def get_last_inference_per_provider(self) -> list[dict]:
+        """Get the most recent inference result for each provider."""
+        cursor = self._conn.cursor()
+        
+        # Get the most recent inference for each provider family
+        query = """
+            SELECT provider_family, MAX(reference_system_time) as max_time
+            FROM inference_results
+            WHERE inference_failure = 0 AND model_name != 'reference'
+            GROUP BY provider_family
+            ORDER BY max_time DESC
+        """
+        cursor.execute(query)
+        
+        results = []
+        for row in cursor.fetchall():
+            # Get the full record for this provider's latest inference
+            cursor2 = self._conn.cursor()
+            cursor2.execute(
+                "SELECT * FROM inference_results WHERE reference_system_time = ? AND provider_family = ?",
+                (row["max_time"], row["provider_family"])
+            )
+            record = cursor2.fetchone()
+            if record:
+                results.append({
+                    "provider_family": record["provider_family"],
+                    "accuracy": float(record["is_accurate"]),
+                    "model_name": record["model_name"],
+                    "reference_system_time": record["reference_system_time"]
+                })
+        
+        return results
+    
+    def get_latest_timestamp(self) -> Optional[datetime]:
+        """Get the most recent timestamp from inference results."""
+        cursor = self._conn.cursor()
+        cursor.execute(
+            "SELECT reference_system_time FROM inference_results ORDER BY reference_system_time DESC LIMIT 1"
+        )
+        result = cursor.fetchone()
+        if result:
+            return datetime.fromisoformat(result["reference_system_time"].replace("Z", "+00:00"))
+        return None
+
 
 # Database instances
-_DEV_DB_PATH = Path(__file__).parent.parent.parent / "data" / "dev_inference.db"
-_PROD_DB_PATH = Path(__file__).parent.parent.parent / "data" / "prod_inference.db"
+_DEV_DB_PATH = Path(__file__).parent.parent / "data" / "dev_inference.db"
+_PROD_DB_PATH = Path(__file__).parent.parent / "data" / "prod_inference.db"
 
 _dev_db: Optional[Database] = None
 _prod_db: Optional[Database] = None

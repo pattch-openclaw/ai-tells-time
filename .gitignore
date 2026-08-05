@@ -43,6 +43,9 @@ data/*.db-wal
 # OBS scene collections (optional - can be gitignored if large)
 # obs-assets/
 
+# Inference results JSON (generated at runtime)
+obs-assets/last-guess.json
+
 # Test artifacts
 .pytest_cache/
 .coverage

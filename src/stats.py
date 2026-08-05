@@ -78,6 +78,75 @@ def export_stats(db=None):
     temp_file.replace(stats_file)
     return stats
 
+def export_inference_results(db=None):
+    """Export last inference results to JSON for the inference-results.html OBS Browser Source."""
+    ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+    db = db or get_prod_database()
+    
+    # Get last inference results for each provider
+    last_results = db.get_last_inference_per_provider()
+    
+    # Build provider info mapping
+    provider_info = {
+        "gemini": {"name": "Gemini", "model": "gemini-2.5-flash"},
+        "openai": {"name": "OpenAI", "model": "gpt-4o-mini"},
+        "claude": {"name": "Anthropic", "model": "claude-3-5-haiku"},
+        "local": {"name": "Local", "model": "qwen2.5vl:7b"}
+    }
+    
+    # Get latest inference timestamp
+    latest_time = db.get_latest_timestamp()
+    
+    # Build result entries
+    results = []
+    for item in last_results:
+        provider_family = item.get("provider_family", "local")
+        info = provider_info.get(provider_family, {"name": provider_family.capitalize(), "model": item.get("model_name", provider_family)})
+        
+        # Determine color class based on provider family
+        color_map = {
+            "gemini": "gemini",
+            "openai": "openai",
+            "claude": "anthropic",
+            "local": "local"
+        }
+        color = color_map.get(provider_family, "local")
+        
+        results.append({
+            "name": info["name"],
+            "accuracy": item.get("accuracy", 0),
+            "detail": info["model"],
+            "color": color
+        })
+    
+    # Build provider details
+    providers = []
+    for provider_family, info in provider_info.items():
+        if any(r.get("provider_family") == provider_family for r in last_results):
+            providers.append({
+                "name": info["name"],
+                "model": info["model"]
+            })
+    
+    # Build final JSON structure
+    output = {
+        "timestamp": latest_time.isoformat() if latest_time else None,
+        "models": results,
+        "providers": providers
+    }
+    
+    # Write to file atomically
+    results_file = ASSETS_DIR / "last-guess.json"
+    temp_file = ASSETS_DIR / "last-guess.json.tmp"
+    
+    with open(temp_file, "w") as f:
+        json.dump(output, f, indent=2)
+        
+    temp_file.replace(results_file)
+    
+    print(f"📊 Inference results exported to {results_file}")
+    return output
+
 def get_stats_text(stats) -> str:
     """Format stats into a readable text string for OBS text sources."""
     overall_pct = stats["overall"]["accuracy"] * 100
