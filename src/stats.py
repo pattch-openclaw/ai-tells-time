@@ -103,24 +103,13 @@ def export_inference_results(db=None):
         provider_family = item.get("provider_family", "local")
         info = provider_info.get(provider_family, {"name": provider_family.capitalize(), "model": item.get("model_name", provider_family)})
         
-        # Determine color class based on provider family
-        color_map = {
-            "gemini": "gemini",
-            "openai": "openai",
-            "claude": "anthropic",
-            "local": "local"
-        }
-        color = color_map.get(provider_family, "local")
-        
         # Get the actual time guess from the database
         time_guess = item.get("time_guess", "--:--")
         
         results.append({
             "name": info["name"],
             "accuracy": item.get("accuracy", 0),
-            "detail": info["model"],
-            "guess": time_guess,
-            "color": color
+            "guess": time_guess
         })
     
     # Build provider details

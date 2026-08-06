@@ -86,21 +86,14 @@
         /* Model Results - Stylized */
         .model-result {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 12px;
             padding: 16px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .model-result:last-child {
             border-bottom: none;
-        }
-
-        .model-info {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            flex: 1;
         }
 
         .model-name {
@@ -112,54 +105,43 @@
         }
 
         .model-guess {
-            font-size: 24px;
+            font-size: 42px;
             font-weight: 800;
             font-family: 'Futura', 'Arial', sans-serif;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        /* Glow classes for accuracy status */
+        .glow-accurate {
+            color: #4ade80;
+            text-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
+        }
+
+        .glow-inaccurate {
+            color: #ef4444;
+            text-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        }
+
+        .glow-normal {
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .status-badge {
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            text-transform: uppercase;
             letter-spacing: 1px;
         }
 
-        .model-detail {
-            font-size: 10px;
-            color: #6b7280;
-            font-family: monospace;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 180px;
+        .status-accurate {
+            color: #4ade80;
         }
 
-        .model-accuracy {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 4px;
-            min-width: 60px;
-        }
-
-        .accuracy-text {
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .accuracy-bar {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .accuracy-bar-bg {
-            width: 40px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .accuracy-bar-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.5s ease;
+        .status-inaccurate {
+            color: #ef4444;
         }
 
         /* Provider Details Section */
@@ -199,7 +181,7 @@
             word-break: break-all;
         }
 
-        /* Color classes */
+        /* Color classes (kept for potential future use) */
         .color-gemini { color: #56ccf2; }
         .color-openai { color: #10a37f; }
         .color-anthropic { color: #d97706; }
@@ -257,10 +239,10 @@
             document.getElementById('last-guess-time').innerText = now;
 
             const placeholderResults = [
-                { name: 'Gemini 2.5 Flash', accuracy: 0.75, detail: 'gemini-2.5-flash', guess: '12:34', color: 'gemini' },
-                { name: 'GPT-4o Mini', accuracy: 0.62, detail: 'gpt-4o-mini', guess: '1:15', color: 'openai' },
-                { name: 'Claude Haiku 4.5', accuracy: 0.58, detail: 'claude-3-5-haiku', guess: '12:45', color: 'anthropic' },
-                { name: 'Local Model', accuracy: 0.42, detail: 'qwen2.5vl:7b', guess: '3:15', color: 'local' }
+                { name: 'Gemini 2.5 Flash', accuracy: 0.75, guess: '12:34' },
+                { name: 'GPT-4o Mini', accuracy: 0.62, guess: '1:15' },
+                { name: 'Claude Haiku 4.5', accuracy: 0.58, guess: '12:45' },
+                { name: 'Local Model', accuracy: 0.42, guess: '3:15' }
             ];
 
             renderModelResults(placeholderResults);
@@ -275,27 +257,50 @@
             renderProviderDetails(placeholderProviders);
         }
 
+        function getAccuracyStatus(accuracy) {
+            // Accurate if within 5 minutes (accuracy >= 91.67%)
+            // Inaccurate if an hour or more off (accuracy <= 16.67%)
+            // Otherwise normal
+            if (accuracy >= 0.9167) {
+                return 'accurate';
+            } else if (accuracy <= 0.1667) {
+                return 'inaccurate';
+            }
+            return 'normal';
+        }
+
         function renderModelResults(results) {
             const container = document.getElementById('model-results');
             container.innerHTML = results.map(result => {
-                const accuracyPct = Math.round(result.accuracy * 100);
-                const barWidth = Math.max(10, Math.min(100, accuracyPct));
-                const isAccurate = accuracyPct >= 50;
+                const accuracy = result.accuracy;
+                const status = getAccuracyStatus(accuracy);
+                
+                let glowClass;
+                let statusText;
+                let statusClass;
+                
+                if (status === 'accurate') {
+                    glowClass = 'glow-accurate';
+                    statusText = 'Accurate';
+                    statusClass = 'status-accurate';
+                } else if (status === 'inaccurate') {
+                    glowClass = 'glow-inaccurate';
+                    statusText = 'Bad Guess';
+                    statusClass = 'status-inaccurate';
+                } else {
+                    glowClass = 'glow-normal';
+                    statusText = 'Off by 5-60 min';
+                    statusClass = 'status-normal';
+                }
                 
                 return `
                     <div class="model-result">
                         <div class="model-info">
-                            <span class="model-name color-${result.color || 'local'}">${result.name}</span>
-                            <span class="model-guess color-${result.color || 'local'}">${result.guess || '--:--'}</span>
-                            <span class="model-detail">${result.detail}</span>
+                            <span class="model-name">${result.name}</span>
+                            <span class="model-guess ${glowClass}">${result.guess || '--:--'}</span>
                         </div>
-                        <div class="model-accuracy">
-                            <span class="accuracy-text" style="color: ${isAccurate ? '#4ade80' : '#f87171'}">${isAccurate ? 'ACCURATE' : 'INACCURATE'}</span>
-                            <div class="accuracy-bar">
-                                <div class="accuracy-bar-bg">
-                                    <div class="accuracy-bar-fill" style="width: ${barWidth}%; background: ${isAccurate ? '#4ade80' : '#f87171'}"></div>
-                                </div>
-                            </div>
+                        <div class="model-status">
+                            <span class="status-badge ${statusClass}">${statusText}</span>
                         </div>
                     </div>
                 `;
