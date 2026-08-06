@@ -83,6 +83,40 @@
             font-family: monospace;
         }
 
+        /* Reference Time Section */
+        .reference-time {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .reference-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #9ca3af;
+        }
+
+        .reference-time-display {
+            font-size: 28px;
+            font-weight: 800;
+            font-family: 'Futura', 'Arial', sans-serif;
+            color: #ffffff;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .reference-sublabel {
+            font-size: 10px;
+            color: #6b7280;
+            font-family: monospace;
+        }
+
         /* Model Results - Stylized */
         .model-result {
             display: flex;
@@ -195,11 +229,7 @@
             word-break: break-all;
         }
 
-        /* Color classes (kept for potential future use) */
-        .color-gemini { color: #56ccf2; }
-        .color-openai { color: #10a37f; }
-        .color-anthropic { color: #d97706; }
-        .color-local { color: #ef4444; }
+        /* Color classes (removed - using consistent white with glow effects) */
     </style>
 </head>
 <body>
@@ -219,6 +249,13 @@
             
             <div id="model-results">
                 <!-- Model results will be populated here -->
+            </div>
+            
+            <!-- Reference Time Section -->
+            <div class="reference-time" id="reference-time-section" style="display: none;">
+                <span class="reference-label">System Reference Time</span>
+                <span class="reference-time-display" id="reference-time-display">--:-- PST</span>
+                <span class="reference-sublabel">(PST)</span>
             </div>
         </div>
 
@@ -251,21 +288,25 @@
         function showPlaceholderData() {
             const now = new Date().toLocaleTimeString('en-US', { hour12: false });
             document.getElementById('last-guess-time').innerText = now;
-
+            
+            // Get PST time for reference
+            const pstNow = new Date().toLocaleTimeString('en-US', { hour12: true, timeZone: 'America/Los_Angeles' });
+            
             const placeholderResults = [
-                { name: 'Gemini 2.5 Flash', accuracy: 0.75, guess: '12:34' },
-                { name: 'GPT-4o Mini', accuracy: 0.62, guess: '1:15' },
-                { name: 'Claude Haiku 4.5', accuracy: 0.58, guess: '12:45' },
-                { name: 'Local Model', accuracy: 0.42, guess: '3:15' }
+                { name: 'CHATGPT', accuracy: 0.75, guess: '12:34' },
+                { name: 'CLAUDE', accuracy: 0.62, guess: '1:15' },
+                { name: 'GEMINI', accuracy: 0.58, guess: '12:45' },
+                { name: 'LOCAL', accuracy: 0.42, guess: '3:15' },
+                { name: 'ACTUAL', accuracy: 1.0, guess: pstNow }
             ];
 
-            renderModelResults(placeholderResults);
+            renderModelResults(placeholderResults, pstNow);
 
             const placeholderProviders = [
-                { name: 'Gemini', model: 'gemini-2.5-flash' },
-                { name: 'OpenAI', model: 'gpt-4o-mini' },
-                { name: 'Anthropic', model: 'claude-3-5-haiku' },
-                { name: 'Local', model: 'qwen2.5vl:7b' }
+                { name: 'CHATGPT', model: 'gpt-4o-mini' },
+                { name: 'CLAUDE', model: 'claude-3-5-haiku' },
+                { name: 'GEMINI', model: 'gemini-2.5-flash' },
+                { name: 'LOCAL', model: 'qwen2.5vl:7b' }
             ];
 
             renderProviderDetails(placeholderProviders);
@@ -283,9 +324,14 @@
             return 'normal';
         }
 
-        function renderModelResults(results) {
+        function renderModelResults(results, actualTime) {
             const container = document.getElementById('model-results');
             container.innerHTML = results.map(result => {
+                // Skip ACTUAL provider in the results list (it's shown separately)
+                if (result.name === 'ACTUAL') {
+                    return '';
+                }
+                
                 const accuracy = result.accuracy;
                 const status = getAccuracyStatus(accuracy);
                 
@@ -319,6 +365,15 @@
                     </div>
                 `;
             }).join('');
+            
+            // Show/hide reference time section based on whether ACTUAL is in results
+            const referenceSection = document.getElementById('reference-time-section');
+            if (actualTime) {
+                referenceSection.style.display = 'flex';
+                document.getElementById('reference-time-display').innerText = actualTime;
+            } else {
+                referenceSection.style.display = 'none';
+            }
         }
 
         function renderProviderDetails(providers) {
@@ -326,21 +381,11 @@
             container.innerHTML = providers.map(provider => {
                 return `
                     <div class="provider-item">
-                        <span class="provider-name color-${getColorClass(provider.name)}">${provider.name}</span>
+                        <span class="provider-name">${provider.name}</span>
                         <span class="provider-model">${provider.model}</span>
                     </div>
                 `;
             }).join('');
-        }
-
-        function getColorClass(name) {
-            const colorMap = {
-                'Gemini': 'gemini',
-                'OpenAI': 'openai',
-                'Anthropic': 'anthropic',
-                'Local': 'local'
-            };
-            return colorMap[name] || 'local';
         }
 
         function updateDashboard(data) {
@@ -348,11 +393,12 @@
             const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString('en-US', { hour12: false }) : new Date().toLocaleTimeString('en-US', { hour12: false });
             document.getElementById('last-guess-time').innerText = timestamp;
 
-            // Render model results
+            // Render model results with ACTUAL time
+            const actualTime = data.actual_time || data.reference_time;
             if (data.models && data.models.length > 0) {
-                renderModelResults(data.models);
+                renderModelResults(data.models, actualTime);
             } else {
-                renderModelResults([]);
+                renderModelResults([], actualTime);
             }
 
             // Render provider details

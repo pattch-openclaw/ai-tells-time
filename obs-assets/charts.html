@@ -117,9 +117,29 @@
 
         // Prepare accuracy chart data (1h and 24h)
         const models = Object.keys(data.models);
-        const labels = models;
-        const data1h = models.map(m => data.models[m]['1h'] * 100);
-        const data24h = models.map(m => data.models[m]['24h'] * 100);
+        
+        // Sort models: alphabetical for 3rd party (CHATGPT, CLAUDE, GEMINI), then LOCAL
+        // Filter out ACTUAL if present
+        const sortedModels = models.filter(m => m !== 'ACTUAL').sort((a, b) => {
+            // Define the desired order for known providers
+            const providerOrder = ['CHATGPT', 'CLAUDE', 'GEMINI', 'LOCAL'];
+            const aIdx = providerOrder.indexOf(a);
+            const bIdx = providerOrder.indexOf(b);
+            
+            // If both are in the known list, sort by that order
+            if (aIdx !== -1 && bIdx !== -1) {
+                return aIdx - bIdx;
+            }
+            // If only one is in the known list, it comes first
+            if (aIdx !== -1) return -1;
+            if (bIdx !== -1) return 1;
+            // Otherwise, alphabetical
+            return a.localeCompare(b);
+        });
+        
+        const labels = sortedModels;
+        const data1h = sortedModels.map(m => data.models[m]['1h'] * 100);
+        const data24h = sortedModels.map(m => data.models[m]['24h'] * 100);
         
         console.log('DEBUG: Models:', models);
         console.log('DEBUG: data1h:', data1h);
@@ -187,11 +207,28 @@
 
         // Prepare offset line chart data (last hour)
         const offsets = data.offsets || {};
-        const offsetModels = Object.keys(offsets);
+        
+        // Sort offset models using same logic as accuracy chart
+        const sortedOffsetModels = Object.keys(offsets).filter(m => m !== 'ACTUAL').sort((a, b) => {
+            // Define the desired order for known providers
+            const providerOrder = ['CHATGPT', 'CLAUDE', 'GEMINI', 'LOCAL'];
+            const aIdx = providerOrder.indexOf(a);
+            const bIdx = providerOrder.indexOf(b);
+            
+            // If both are in the known list, sort by that order
+            if (aIdx !== -1 && bIdx !== -1) {
+                return aIdx - bIdx;
+            }
+            // If only one is in the known list, it comes first
+            if (aIdx !== -1) return -1;
+            if (bIdx !== -1) return 1;
+            // Otherwise, alphabetical
+            return a.localeCompare(b);
+        });
         
         // Get all timestamps and sort them
         let allTimestamps = new Set();
-        offsetModels.forEach(model => {
+        sortedOffsetModels.forEach(model => {
             offsets[model].forEach(point => allTimestamps.add(point.timestamp));
         });
         const sortedTimestamps = Array.from(allTimestamps).sort();
@@ -202,7 +239,7 @@
                 type: 'line',
                 data: {
                     labels: sortedTimestamps.map(t => t.slice(11, 19)), // Show HH:MM:SS
-                    datasets: offsetModels.map((model, idx) => {
+                    datasets: sortedOffsetModels.map((model, idx) => {
                         const modelOffsets = offsets[model] || [];
                         // Create a map for quick timestamp lookup
                         const offsetMap = {};
@@ -248,7 +285,7 @@
         } else {
             // Update offset chart data
             offsetChart.data.labels = sortedTimestamps.map(t => t.slice(11, 19));
-            offsetChart.data.datasets = offsetModels.map((model, idx) => {
+            offsetChart.data.datasets = sortedOffsetModels.map((model, idx) => {
                 const modelOffsets = offsets[model] || [];
                 const offsetMap = {};
                 modelOffsets.forEach(p => offsetMap[p.timestamp] = p.offset_minutes);

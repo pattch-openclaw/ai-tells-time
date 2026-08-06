@@ -86,12 +86,12 @@ def export_inference_results(db=None):
     # Get last inference results for each provider
     last_results = db.get_last_inference_per_provider()
     
-    # Build provider info mapping
+    # Build provider info mapping (sorted alphabetically for 3rd party providers)
     provider_info = {
-        "gemini": {"name": "Gemini", "model": "gemini-2.5-flash"},
-        "openai": {"name": "OpenAI", "model": "gpt-4o-mini"},
-        "claude": {"name": "Anthropic", "model": "claude-3-5-haiku"},
-        "local": {"name": "Local", "model": "qwen2.5vl:7b"}
+        "chatgpt": {"name": "CHATGPT", "model": "gpt-4o-mini"},
+        "claude": {"name": "CLAUDE", "model": "claude-3-5-haiku"},
+        "gemini": {"name": "GEMINI", "model": "gemini-2.5-flash"},
+        "local": {"name": "LOCAL", "model": "qwen2.5vl:7b"}
     }
     
     # Get latest inference timestamp
@@ -109,23 +109,68 @@ def export_inference_results(db=None):
         results.append({
             "name": info["name"],
             "accuracy": item.get("accuracy", 0),
-            "guess": time_guess
+            "guess": time_guess,
+            "provider_family": provider_family
         })
     
-    # Build provider details
+    # Add ACTUAL reference time entry
+    pst_time = "--:-- PST"
+    if latest_time:
+        # Convert UTC to PST
+        dt_utc = latest_time.replace(tzinfo=ZoneInfo("UTC")) if latest_time.tzinfo is None else latest_time
+        pst_time = dt_utc.astimezone(PST).strftime("%I:%M %p")
+    
+    results.append({
+        "name": "ACTUAL",
+        "accuracy": 1.0,  # ACTUAL is always accurate by definition
+        "guess": pst_time,
+        "provider_family": "actual"
+    })
+    
+    # Sort results: alphabetical for 3rd party (CHATGPT, CLAUDE, GEMINI), then LOCAL, then ACTUAL
+    def sort_key(result):
+        name = result["name"]
+        if name == "ACTUAL":
+            return (2, "")  # Last
+        elif name in ["CHATGPT", "CLAUDE", "GEMINI", "LOCAL"]:
+            return (1, name)  # Alphabetical order among these
+        else:
+            return (0, name)  # Other providers first (alphabetical)
+    
+    results.sort(key=sort_key)
+    
+    # Build provider details - sorted alphabetically (excluding LOCAL and ACTUAL)
     providers = []
-    for provider_family, info in provider_info.items():
-        if any(r.get("provider_family") == provider_family for r in last_results):
+    # Add 3rd party providers in alphabetical order
+    for provider_family in ["chatgpt", "claude", "gemini"]:
+        info = provider_info.get(provider_family)
+        if info and any(r.get("provider_family") == provider_family for r in last_results):
             providers.append({
                 "name": info["name"],
                 "model": info["model"]
             })
+    # Add LOCAL provider
+    if provider_info.get("local") and any(r.get("provider_family") == "local" for r in last_results):
+        providers.append({
+            "name": provider_info["local"]["name"],
+            "model": provider_info["local"]["model"]
+        })
+    
+    # Add ACTUAL reference time entry
+    pst_time = None
+    if latest_time:
+        # Convert UTC to PST
+        dt_utc = latest_time.replace(tzinfo=ZoneInfo("UTC")) if latest_time.tzinfo is None else latest_time
+        pst_time = dt_utc.astimezone(PST).strftime("%I:%M %p")
+    else:
+        pst_time = "--:-- PST"
     
     # Build final JSON structure
     output = {
         "timestamp": latest_time.isoformat() if latest_time else None,
         "models": results,
-        "providers": providers
+        "providers": providers,
+        "actual_time": pst_time
     }
     
     # Write to file atomically
