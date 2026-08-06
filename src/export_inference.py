@@ -41,7 +41,7 @@ async def main():
     for model in data['models']:
         accuracy = model['accuracy'] * 100
         status = "✅" if accuracy >= 50 else "❌"
-        print(f"  {status} {model['name']}: {accuracy:.1f}% ({model['detail']})")
+        print(f"  {status} {model['name']}: {accuracy:.1f}% ({model['guess']})")
     
     if data['providers']:
         print(f"\\nProviders configured: {len(data['providers'])}")
