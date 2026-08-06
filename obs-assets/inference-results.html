@@ -86,8 +86,8 @@
         /* Model Results - Stylized */
         .model-result {
             display: flex;
-            flex-direction: column;
-            gap: 12px;
+            justify-content: space-between;
+            align-items: center;
             padding: 16px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
@@ -96,8 +96,16 @@
             border-bottom: none;
         }
 
+        .model-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+            padding-right: 16px;
+        }
+
         .model-name {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 700;
             font-family: 'Futura', 'Arial', sans-serif;
             color: #ffffff;
@@ -105,11 +113,10 @@
         }
 
         .model-guess {
-            font-size: 42px;
+            font-size: 36px;
             font-weight: 800;
             font-family: 'Futura', 'Arial', sans-serif;
             letter-spacing: 2px;
-            text-align: center;
         }
 
         /* Glow classes for accuracy status */
@@ -128,10 +135,17 @@
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
         }
 
+        .model-status {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            min-width: 120px;
+        }
+
         .status-badge {
             font-size: 12px;
             font-weight: 600;
-            text-align: center;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
