@@ -87,7 +87,9 @@ def export_inference_results(db=None):
     last_results = db.get_last_inference_per_provider()
     
     # Build provider info mapping (sorted alphabetically for 3rd party providers)
+    # Note: "openai" maps to CHATGPT because OpenAI models are used for CHATGPT
     provider_info = {
+        "openai": {"name": "CHATGPT", "model": "gpt-4o-mini"},
         "chatgpt": {"name": "CHATGPT", "model": "gpt-4o-mini"},
         "claude": {"name": "CLAUDE", "model": "claude-3-5-haiku"},
         "gemini": {"name": "GEMINI", "model": "gemini-2.5-flash"},
@@ -101,13 +103,20 @@ def export_inference_results(db=None):
     results = []
     for item in last_results:
         provider_family = item.get("provider_family", "local")
-        info = provider_info.get(provider_family, {"name": provider_family.capitalize(), "model": item.get("model_name", provider_family)})
+        info = provider_info.get(provider_family)
+        if info:
+            name = info["name"]
+            model = info["model"]
+        else:
+            # Unrecognized provider - use capitalized name, but show "Other" for common unknown values
+            name = "Other" if provider_family in ["other", "unknown"] else provider_family.capitalize()
+            model = item.get("model_name", provider_family)
         
         # Get the actual time guess from the database
         time_guess = item.get("time_guess", "--:--")
         
         results.append({
-            "name": info["name"],
+            "name": name,
             "accuracy": item.get("accuracy", 0),
             "guess": time_guess,
             "provider_family": provider_family
@@ -141,8 +150,8 @@ def export_inference_results(db=None):
     
     # Build provider details - sorted alphabetically (excluding LOCAL and ACTUAL)
     providers = []
-    # Add 3rd party providers in alphabetical order
-    for provider_family in ["chatgpt", "claude", "gemini"]:
+    # Add 3rd party providers in alphabetical order (including openai as CHATGPT alias)
+    for provider_family in ["openai", "claude", "gemini"]:
         info = provider_info.get(provider_family)
         if info and any(r.get("provider_family") == provider_family for r in last_results):
             providers.append({
