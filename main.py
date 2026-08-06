@@ -394,6 +394,20 @@ async def main_loop():
     db_env = "PROD" if args.prod else "DEV"
     print(f"✅ Database connection initialized ({db_env}): {db_path}")
 
+    # Pre-seed charts with existing data on startup
+    try:
+        print("📊 Pre-seeding charts with existing data...")
+        stats = export_stats(db)
+        print(f"   ✅ Stats pre-seeded: {len(stats['models'])} models with data")
+        
+        inference_data = export_inference_results(db)
+        if inference_data['models']:
+            print(f"   ✅ Inference results pre-seeded: {len(inference_data['models'])} models")
+        else:
+            print("   ⚠️  No inference data found in database")
+    except Exception as e:
+        print(f"   ⚠️  Could not pre-seed data: {e}")
+
     print("\nStarting the 60-second broadcast loop...")
     print(f"Inference mode: {'All providers every minute' if args.every_minute else 'Local every minute, external every 5 minutes'}")
 
