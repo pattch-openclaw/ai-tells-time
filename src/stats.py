@@ -112,10 +112,14 @@ def export_inference_results(db=None):
         }
         color = color_map.get(provider_family, "local")
         
+        # Get the actual time guess from the database
+        time_guess = item.get("time_guess", "--:--")
+        
         results.append({
             "name": info["name"],
             "accuracy": item.get("accuracy", 0),
             "detail": info["model"],
+            "guess": time_guess,
             "color": color
         })
     

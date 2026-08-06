@@ -319,6 +319,7 @@ class Database:
                     "provider_family": record["provider_family"],
                     "accuracy": float(record["is_accurate"]),
                     "model_name": record["model_name"],
+                    "time_guess": record["time_guess"],
                     "reference_system_time": record["reference_system_time"]
                 })
         
