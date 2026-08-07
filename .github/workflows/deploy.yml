@@ -3,6 +3,7 @@ name: Deploy to Mac Mini
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -17,7 +18,8 @@ jobs:
       - name: Update repository from GitHub
         working-directory: /Users/sam/Coding/ai-tells-time
         run: |
-          git pull origin main --rebase
+          git fetch origin
+          git checkout ${{ github.sha }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
